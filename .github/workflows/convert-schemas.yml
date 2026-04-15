@@ -1,4 +1,4 @@
-name: Update Kubernetes Schemas
+name: Convert Kubernetes Schemas
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
     - cron: "10 10 */2 * *"
 
 jobs:
-  update:
+  convert:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -23,13 +23,13 @@ jobs:
       - name: bundle install
         run: bundle install
 
-      - name: update-the-schemas-bro
-        run: bin/update-schemas
+      - name: convert-the-schemas-bro
+        run: bin/convert-schemas
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: schemas
-          commit_message: "Workflow Run: update-schemas.yml"
+          commit_message: "Workflow Run: convert-schemas.yml"
           commit_user_name: Nathan K
           commit_user_email: nathankidd@hey.com
           commit_author: Nathan K <nathankidd@hey.com>
