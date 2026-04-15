@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Install openapi2jsonschema
+        run: pip install openapi2jsonschema
+
       - name: update-the-schemas-bro
         run: "bin/update-schemas"
 
