@@ -2,6 +2,9 @@ name: Update CRDs Catalog
 
 on:
   workflow_dispatch:
+  schedule:
+    # “At 10:10 on every 2nd day-of-month.”
+    - cron: "10 10 */2 * *"
 
 jobs:
   update-catalog:
@@ -14,6 +17,9 @@ jobs:
 
       - name: download crds-catalog index
         run: curl -fsSL -o crds-catalog.yaml https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/index.yaml
+
+      - name: download the crds from catalog
+        run: "bin/update-crds"
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:

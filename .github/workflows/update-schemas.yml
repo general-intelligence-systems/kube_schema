@@ -3,6 +3,7 @@ name: cron
 on:
   workflow_dispatch:
   schedule:
+    # “At 10:10 on every 2nd day-of-month.”
     - cron: "10 10 */2 * *"
 
 jobs:
