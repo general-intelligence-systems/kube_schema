@@ -18,6 +18,9 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
+      - name: bundle install
+        run: nix develop --command bundle install
+
       - name: update-the-schemas-bro
         run: nix develop --command bin/update-schemas
 
