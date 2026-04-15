@@ -15,14 +15,23 @@ jobs:
         with:
           ref: schemas
 
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install openapi2jsonschema
+        run: pip install openapi2jsonschema
 
       - name: bundle install
-        run: nix develop --command bundle install
+        run: bundle install
 
       - name: update-the-schemas-bro
-        run: nix develop --command bin/update-schemas
+        run: bin/update-schemas
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
