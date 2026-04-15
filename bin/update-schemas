@@ -17,13 +17,15 @@ require 'rubyshell'
 # cafd6ee7ebd934f5ef117002253c579ae0726cf7	refs/tags/v1.9.9
 # 0d7f6248fafbcd48ecc35fc9a9d79a8fee420afb	refs/tags/v1.9.9-beta.0
 
+SCHEMA_DIR = "kubernetes-schemas"
+
 def mkdir_p(x) = sh.mkdir x, "-p"
 
 def swagger(version) = 
   "https://raw.githubusercontent.com/kubernetes/kubernetes/#{version}/api/openapi-spec/swagger.json"
 
 sh do
-  mkdir_p "schemas"
+  mkdir_p SCHEMA_DIR
 
   total = 0
   progress = 0
@@ -37,13 +39,13 @@ sh do
   )
     .then { _1.split("\n").map { |x| x.split("/").last } }
     .tap { total = _1.count }
-    .reject { |x| File.exist? "schemas/#{x}.json" }
+    .reject { |x| File.exist? "#{SCHEMA_DIR}/#{x}.json" }
     .tap { progress = total - _1.count }
     .reverse
     .each { |version|
       curl(swagger(version)).then do |json|
         if json.length > 1
-          File.write "schemas/#{version}.json", json
+          File.write "#{SCHEMA_DIR}/#{version}.json", json
         end
       end
       progress += 1
