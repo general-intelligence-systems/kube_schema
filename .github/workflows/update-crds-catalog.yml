@@ -1,26 +1,24 @@
-name: cron
+name: Update CRDs Catalog
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "10 10 */2 * *"
 
 jobs:
-  gen:
+  update-catalog:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: checkout schemas branch
         uses: actions/checkout@v4
         with:
           ref: schemas
 
-      - name: update-the-schemas-bro
-        run: "bin/update-schemas"
+      - name: download crds-catalog index
+        run: curl -fsSL -o crds-catalog.yaml https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/index.yaml
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: schemas
-          commit_message: "Workflow Run: update-schemas.yml"
+          commit_message: "Update crds-catalog.yaml"
           commit_user_name: Nathan K
           commit_user_email: nathankidd@hey.com
           commit_author: Nathan K <nathankidd@hey.com>

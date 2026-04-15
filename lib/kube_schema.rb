@@ -1,25 +1,34 @@
 # frozen_string_literal: true
 
 require_relative "kube_schema/version"
+require_relative "kube_schema/resource"
 require_relative "kube_schema/instance"
 
 module KubeSchema
   @schema_version = nil
+  @instances = {}
 
   class << self
     # Set a default Kubernetes version for bare lookups like KubeSchema["Deployment"].
     # When nil, the latest version found in the schemas directory is used.
     attr_accessor :schema_version
 
-    # KubeSchema["1.33.6"]       => Instance proxy (supports ["Deployment"] chaining)
-    # KubeSchema["Deployment"]   => definition hash via the default version
-    # KubeSchema["apps/v1/Deployment"] => definition hash via the default version
+    # KubeSchema["1.33.6"]       => cached Instance (supports ["Deployment"] chaining)
+    # KubeSchema["Deployment"]   => Resource via the default version
+    # KubeSchema["apps/v1/Deployment"] => Resource via the default version
     def [](key)
       if version_file_exists?(key)
-        Instance.new(key)
+        normalized = key.to_s.start_with?("v") ? key.to_s : "v#{key}"
+        @instances[normalized] ||= Instance.new(key)
       else
         default_schema[key]
       end
+    end
+
+    # Build a Resource from a hash.
+    #   KubeSchema.parse(KubeSchema["Deployment"].to_h) == KubeSchema["Deployment"]
+    def parse(hash)
+      Resource.new(hash)
     end
 
     # Sorted list of resource strings for the default version.
@@ -45,7 +54,8 @@ module KubeSchema
     private
 
     def default_schema
-      Instance.new(schema_version || latest_version)
+      ver = schema_version || latest_version
+      @instances[ver] ||= Instance.new(ver)
     end
 
     def version_file_exists?(key)

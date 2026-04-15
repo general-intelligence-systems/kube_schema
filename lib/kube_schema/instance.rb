@@ -18,15 +18,27 @@ module KubeSchema
     def initialize(version)
       @version = normalize_version(version)
       @data = nil
-      @gvk_index = nil # { "apps/v1/Deployment" => "io.k8s.api.apps.v1.Deployment", ... }
+      @gvk_index = nil          # { "apps/v1/Deployment" => "io.k8s.api.apps.v1.Deployment", ... }
+      @resource_classes = {}     # { "io.k8s.api.apps.v1.Deployment" => Class, ... }
     end
 
     # Look up a resource by full "group/version/kind" or by bare "Kind".
-    # Returns the raw definition hash from the schema JSON, or nil.
+    # Returns a class that inherits from KubeSchema::Resource, or nil.
     def [](key)
       load!
       defn_key = resolve(key)
-      @data["definitions"][defn_key] if defn_key
+      return nil unless defn_key
+
+      @resource_classes[defn_key] ||= begin
+        schema_hash = @data["definitions"][defn_key]
+        Class.new(Resource) do
+          @schema = schema_hash
+
+          def self.schema
+            @schema || superclass.schema
+          end
+        end
+      end
     end
 
     # Returns the full parsed JSON hash from the schema file.
