@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+#require 'debug'
+require 'rubyshell'
+
+# raw_tag_lines looks like this:
+#
+# 4f68413f776bb82946b6a7a35f109c026398de48	refs/tags/v1.9.4-beta.0
+# 30e1cfa5513f14be4386ff61e82526fd3f0ab974	refs/tags/v1.9.5
+# 0aa3d277193f1a50ca3fa5762ccf2315ddc549ae	refs/tags/v1.9.5-beta.0
+# b42ce3a6514f923938816ec4db4ffe3e4f4cfb25	refs/tags/v1.9.6
+# 52d30a8f614005a4f3d1faa32e8870513e07cfc8	refs/tags/v1.9.6-beta.0
+# 6141ee5807d40c2c0e84797c1855024802cc0417	refs/tags/v1.9.7
+# c71692effa26450e421e5eca620149c18e6a3081	refs/tags/v1.9.7-beta.0
+# 5dd84417c2f8b4d6a613b644786cae32ad3daa74	refs/tags/v1.9.8
+# 0efb1e2e9bd256908fb47482f7e4f7dd99cb6411	refs/tags/v1.9.8-beta.0
+# cafd6ee7ebd934f5ef117002253c579ae0726cf7	refs/tags/v1.9.9
+# 0d7f6248fafbcd48ecc35fc9a9d79a8fee420afb	refs/tags/v1.9.9-beta.0
+
+def mkdir_p(x) = sh.mkdir x, "-p"
+
+def swagger(version) = 
+  "https://raw.githubusercontent.com/kubernetes/kubernetes/#{version}/api/openapi-spec/swagger.json"
+
+sh do
+  mkdir_p "schemas"
+
+  total = 0
+  progress = 0
+
+  git(*%w[
+      ls-remote
+      --refs
+      --tags
+      https://github.com/kubernetes/kubernetes.git
+    ]
+  )
+    .then { _1.split("\n").map { |x| x.split("/").last } }
+    .tap { total = _1.count }
+    .reject { |x| File.exist? "schemas/#{x}.json" }
+    .tap { progress = total - _1.count }
+    .reverse
+    .each { |version|
+      curl(swagger(version)).then do |json|
+        if json.length > 1
+          File.write "schemas/#{version}.json", json
+        end
+      end
+      progress += 1
+      puts "#{progress}/#{total}"
+    }
+
+end

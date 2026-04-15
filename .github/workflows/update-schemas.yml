@@ -1,0 +1,23 @@
+name: cron
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "10 10 */2 * *"
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: update-the-schemas-bro
+        run: "bin/update-schemas"
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Workflow Run: update-schemas.yml
+          commit_user_name: Nathan K
+          commit_user_email: nathankidd@hey.com
+          commit_author: Nathan K <nathankidd@hey.com>
