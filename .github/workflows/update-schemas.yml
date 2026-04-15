@@ -1,4 +1,4 @@
-name: cron
+name: Update Kubernetes Schemas
 
 on:
   workflow_dispatch:
@@ -7,13 +7,21 @@ on:
     - cron: "10 10 */2 * *"
 
 jobs:
-  gen:
+  update:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
         with:
           ref: schemas
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
       - name: update-the-schemas-bro
         run: "bin/update-schemas"

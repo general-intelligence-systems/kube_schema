@@ -1,4 +1,4 @@
-name: Update CRDs Catalog
+name: Update CRD Schemas
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
     - cron: "10 10 */2 * *"
 
 jobs:
-  update-catalog:
+  update:
     runs-on: ubuntu-latest
     steps:
       - name: checkout schemas branch
@@ -17,6 +17,10 @@ jobs:
 
       - name: download crds-catalog index
         run: curl -fsSL -o crds-catalog.yaml https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/index.yaml
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
 
       - name: download the crds from catalog
         run: "bin/update-crds"
