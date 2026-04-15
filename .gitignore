@@ -1,7 +1,7 @@
 *.gem
+.direnv
 /.bundle/
 /coverage/
 /pkg/
 /tmp/
 /vendor/bundle
-Gemfile.lock
