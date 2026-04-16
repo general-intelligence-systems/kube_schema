@@ -6,8 +6,14 @@ require_relative 'kube_schema/instance'
 require_relative 'kube_schema/schema_cache'
 
 module KubeSchema
+  class UnknownVersionError < StandardError; end
+
   @schema_version = nil
   @instances = {}
+
+  GEM_ROOT = File.expand_path("..", __dir__).freeze
+  SCHEMA_INDEX = File.join(GEM_ROOT, "data").freeze
+  DEFAULT_VERSION = "1.35.3" # 2025-04-16
 
   class << self
     # Set a default Kubernetes version for bare lookups like KubeSchema["Deployment"].
@@ -18,50 +24,45 @@ module KubeSchema
     # KubeSchema["Deployment"]   => Resource via the default version
     # KubeSchema["apps/v1/Deployment"] => Resource via the default version
     def [](key)
-      if version_file_exists?(key)
-        normalized = key.to_s.start_with?('v') ? key.to_s : "v#{key}"
-        @instances[normalized] ||= Instance.new(key)
+      is_a_version = -> (key) { Gem::Version.correct?(key) }
+
+      if is_a_version.(key)
+        if has_version?(key)
+          @instances[key] ||= Instance.new(key)
+        else
+          raise UnknownVersionError.new(
+            "\n#{key} is an unknown version..." +
+            "\nUse `KubeSchema.schema_versions` to get a list."
+          )
+        end
       else
-        default_schema[key]
+        (schema_version || DEFAULT_VERSION)[key]
       end
     end
 
     # Build a Resource from a hash.
     #   KubeSchema.parse(KubeSchema["Deployment"].to_h) == KubeSchema["Deployment"]
     def parse(hash)
-      Resource.new(hash)
+      raise NotImplementedError
     end
 
-    # Sorted list of resource strings for the default version.
-    def list_resources
-      default_schema.list_resources
-    end
-
-    # Path to the schemas directory shipped with the gem.
-    def schemas_dir
-      File.join(File.expand_path('..', __dir__), 'schemas')
+    def schema_versions
+      @schema_versions ||=
+        Dir.glob(SCHEMA_INDEX + "/v*.txt").map do |file_path|
+          file_path.split("/").last.gsub(".txt", "")[1..-1]
+        end.sort_by { Gem::Version.new(_1) }
     end
 
     # The latest Kubernetes version available in the schemas directory,
     # determined by sorting the filenames with Gem::Version.
     def latest_version
-      Dir.glob(File.join(schemas_dir, 'v*.json'))
-         .map { |f| File.basename(f, '.json') }
-         .select { |v| v.match?(/\Av\d+\.\d+\.\d+\z/) } # stable releases only
-         .sort_by { |v| Gem::Version.new(v.delete_prefix('v')) }
-         .last
+      schema_versions.last
     end
 
     private
 
-    def default_schema
-      ver = schema_version || latest_version
-      @instances[ver] ||= Instance.new(ver)
-    end
-
-    def version_file_exists?(key)
-      normalized = key.to_s.start_with?('v') ? key.to_s : "v#{key}"
-      File.exist?(File.join(schemas_dir, "#{normalized}.json"))
-    end
+      def has_version?(version)
+        schema_versions.include?(version)
+      end
   end
 end
