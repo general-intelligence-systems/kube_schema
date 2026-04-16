@@ -1,0 +1,30 @@
+name: Update Schema Index
+
+on:
+  workflow_dispatch:
+  schedule:
+    # "At 10:30 on every 2nd day-of-month." (after update-schemas)
+    - cron: "30 10 */2 * *"
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+
+      - name: List JSON files from schemas branch
+        run: |
+          mkdir -p data
+          git fetch origin schemas --depth=1
+          git ls-tree -r --name-only origin/schemas -- | grep '\.json$' > data/schema-list.txt
+          echo "Found $(wc -l < data/schema-list.txt) JSON files"
+
+      - name: Commit schema index
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Workflow Run: update-schema-index.yml"
+          commit_user_name: Nathan K
+          commit_user_email: nathankidd@hey.com
+          commit_author: Nathan K <nathankidd@hey.com>
+          file_pattern: data/schema-list.txt
