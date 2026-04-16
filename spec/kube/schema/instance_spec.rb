@@ -17,7 +17,7 @@ RSpec.describe Kube::Schema::Instance do
     end
 
     it "raises UnknownVersionError for a non-version string" do
-      expect { described_class.new("not-a-version") }.to raise_error(Kube::Schema::UnknownVersionError)
+      expect { described_class.new("not-a-version") }.to raise_error(Kube::UnknownVersionError)
     end
   end
 

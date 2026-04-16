@@ -96,7 +96,7 @@ RSpec.describe Kube::Schema::SchemaCache do
       allow(Net::HTTP).to receive(:get_response).and_return(response)
 
       expect { described_class.fetch("v1.34.4/nonexistent") }.to raise_error(
-        Kube::Schema::SchemaCache::DownloadError, /HTTP 404/
+        Kube::DownloadError, /HTTP 404/
       )
     end
   end

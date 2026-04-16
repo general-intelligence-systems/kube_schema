@@ -64,7 +64,7 @@ RSpec.describe Kube::Schema do
       end
 
       it "raises UnknownVersionError for an invalid version" do
-        expect { Kube::Schema["0.0.1"] }.to raise_error(Kube::Schema::UnknownVersionError)
+        expect { Kube::Schema["0.0.1"] }.to raise_error(Kube::UnknownVersionError)
       end
 
 
@@ -97,14 +97,14 @@ RSpec.describe Kube::Schema do
     context "with a 'v'-prefixed version string" do
       it "raises IncorrectVersionFormat" do
         expect { Kube::Schema["v1.33.6"] }.to raise_error(
-          Kube::Schema::IncorrectVersionFormat,
+          Kube::IncorrectVersionFormat,
           /Don't preface the version with a "v"/
         )
       end
 
       it "suggests the correct format in the error message" do
         expect { Kube::Schema["v1.33.6"] }.to raise_error(
-          Kube::Schema::IncorrectVersionFormat,
+          Kube::IncorrectVersionFormat,
           /Use Kube::Schema\["1\.33\.6"\] instead/
         )
       end
