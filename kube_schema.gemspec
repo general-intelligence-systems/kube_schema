@@ -31,4 +31,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rubocop", "~> 1.21"
+
+  spec.add_dependency "rubyshell", "~> 1.5"
+  spec.add_dependency "json_schemer", "~> 2.5"
+  spec.add_dependency "black_hole_struct", "~> 0.1"
 end

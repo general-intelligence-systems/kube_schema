@@ -4,6 +4,7 @@ require_relative 'kube_schema/version'
 require_relative 'kube_schema/resource'
 require_relative 'kube_schema/instance'
 require_relative 'kube_schema/schema_cache'
+require_relative 'kube_schema/schema_index'
 
 module KubeSchema
   class UnknownVersionError < StandardError; end
@@ -13,7 +14,7 @@ module KubeSchema
 
   GEM_ROOT = File.expand_path("..", __dir__).freeze
   SCHEMA_INDEX = File.join(GEM_ROOT, "data").freeze
-  DEFAULT_VERSION = "1.35.3" # 2025-04-16
+  DEFAULT_VERSION = "1.34.4" # 2025-04-16
 
   class << self
     # Set a default Kubernetes version for bare lookups like KubeSchema["Deployment"].
@@ -36,7 +37,7 @@ module KubeSchema
           )
         end
       else
-        (schema_version || DEFAULT_VERSION)[key]
+        Instance.new(schema_version || DEFAULT_VERSION)[key]
       end
     end
 
@@ -59,10 +60,8 @@ module KubeSchema
       schema_versions.last
     end
 
-    private
-
-      def has_version?(version)
-        schema_versions.include?(version)
-      end
+    def has_version?(version)
+      schema_versions.include?(version)
+    end
   end
 end
