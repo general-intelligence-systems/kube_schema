@@ -10,9 +10,9 @@ KWOK_LATEST_RELEASE=$(curl "https://api.github.com/repos/${KWOK_REPO}/releases/l
 wget -O kwokctl -c "https://github.com/${KWOK_REPO}/releases/download/${KWOK_LATEST_RELEASE}/kwokctl-$(go env GOOS)-$(go env GOARCH)"
 
 chmod +x kwokctl
-sudo mv kwokctl bin/kwokctl
+mv kwokctl bin/kwokctl
 
 wget -O kwok -c "https://github.com/${KWOK_REPO}/releases/download/${KWOK_LATEST_RELEASE}/kwok-$(go env GOOS)-$(go env GOARCH)"
-chmod +x kwok
 
-sudo mv kwok bin/kwok
+chmod +x kwok
+mv kwok bin/kwok
