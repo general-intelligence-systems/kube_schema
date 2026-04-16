@@ -38,10 +38,12 @@ module KubeSchema
       #
       def fetch(file_path)
         local = local_path(file_path)
-        return local if File.exist?(local)
 
-        download!(file_path, local)
-        local
+        if File.exist?(local)
+          local
+        else
+          download!(file_path, local)
+        end
       end
 
       # Returns the JSON content as a String, downloading if necessary.
@@ -51,7 +53,11 @@ module KubeSchema
 
       # Returns the local path where a schema would be cached (without downloading).
       def local_path(file_path)
-        File.join(cache_dir, "#{file_path}.json")
+        if file_path.end_with?(".json")
+          raise "What are you doing???? don't put .json on the end...."
+        else
+          File.join(cache_dir, "#{file_path}.json")
+        end
       end
 
       # Returns true if the schema is already cached locally.
@@ -62,7 +68,10 @@ module KubeSchema
       # Removes a single cached schema file.
       def evict(file_path)
         path = local_path(file_path)
-        File.delete(path) if File.exist?(path)
+
+        if File.exist?(path)
+          File.delete(path)
+        end
       end
 
       # Removes the entire cache directory.
@@ -72,20 +81,20 @@ module KubeSchema
 
       private
 
-      def download!(file_path, local)
-        url = "#{BASE_URL}/#{file_path}.json"
-        uri = URI.parse(url)
+        def download!(file_path, local)
+          url = "#{BASE_URL}/#{file_path}.json"
+          uri = URI.parse(url)
 
-        response = Net::HTTP.get_response(uri)
+          Net::HTTP.get_response(uri).then do |response|
+            unless response.is_a?(Net::HTTPSuccess)
+              raise DownloadError,
+                    "Failed to download schema: #{url} (HTTP #{response.code})"
+            end
 
-        unless response.is_a?(Net::HTTPSuccess)
-          raise DownloadError,
-                "Failed to download schema: #{url} (HTTP #{response.code})"
+            FileUtils.mkdir_p(File.dirname(local))
+            File.write(local, response.body)
+          end
         end
-
-        FileUtils.mkdir_p(File.dirname(local))
-        File.write(local, response.body)
-      end
     end
   end
 end
