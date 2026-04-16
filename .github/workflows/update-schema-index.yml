@@ -13,29 +13,14 @@ jobs:
       - name: Checkout current branch
         uses: actions/checkout@v4
 
-      - name: List JSON files from schemas branch
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Build schema index
         run: |
-          mkdir -p data
-          # Clear old versioned lists
-          rm -f data/v*.txt
           git fetch origin schemas --depth=1
-          git ls-tree -r --name-only origin/schemas -- \
-            | grep '\.json$' \
-            | grep -v '^kubernetes-schemas/' \
-            | sed 's/\.json$//' \
-            | while IFS= read -r path; do
-                slashes=$(echo "$path" | tr -cd '/' | wc -c)
-                if [ "$slashes" -ge 3 ]; then
-                  version=$(echo "$path" | cut -d'/' -f1)
-                  echo "$path" >> "data/${version}.txt"
-                else
-                  echo "$path" >> data/schema-list.txt
-                fi
-              done
-          echo "schema-list.txt: $(wc -l < data/schema-list.txt 2>/dev/null || echo 0) entries"
-          for f in data/v*.txt; do
-            [ -f "$f" ] && echo "$(basename "$f"): $(wc -l < "$f") entries"
-          done
+          bin/update-schema-index
 
       - name: Commit schema index
         uses: stefanzweifel/git-auto-commit-action@v5
