@@ -8,6 +8,7 @@ require_relative 'kube_schema/schema_index'
 
 module KubeSchema
   class UnknownVersionError < StandardError; end
+  class IncorrectVersionFormat < StandardError; end
 
   @schema_version = nil
   @instances = {}
@@ -26,6 +27,12 @@ module KubeSchema
     # KubeSchema["apps/v1/Deployment"] => Resource via the default version
     def [](key)
       is_a_version = -> (key) { Gem::Version.correct?(key) }
+
+      if key.start_with?("v") && Gem::Version.correct?(key.sub("v", ""))
+        raise IncorrectVersionFormat,
+          "\nDon't preface the version with a \"v\"." \
+          "\nUse KubeSchema[\"#{key.sub("v", "")}\"] instead."
+      end
 
       if is_a_version.(key)
         if has_version?(key)
