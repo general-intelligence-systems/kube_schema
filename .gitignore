@@ -1,0 +1,9 @@
+*.gem
+.direnv
+/.bundle/
+/coverage/
+/pkg/
+/tmp/
+/vendor/bundle
+bin/kwok
+bin/kwokctl
