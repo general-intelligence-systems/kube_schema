@@ -16,9 +16,26 @@ jobs:
       - name: List JSON files from schemas branch
         run: |
           mkdir -p data
+          # Clear old versioned lists
+          rm -f data/v*.txt
           git fetch origin schemas --depth=1
-          git ls-tree -r --name-only origin/schemas -- | grep '\.json$' > data/schema-list.txt
-          echo "Found $(wc -l < data/schema-list.txt) JSON files"
+          git ls-tree -r --name-only origin/schemas -- \
+            | grep '\.json$' \
+            | grep -v '^kubernetes-schemas/' \
+            | sed 's/\.json$//' \
+            | while IFS= read -r path; do
+                slashes=$(echo "$path" | tr -cd '/' | wc -c)
+                if [ "$slashes" -ge 3 ]; then
+                  version=$(echo "$path" | cut -d'/' -f1)
+                  echo "$path" >> "data/${version}.txt"
+                else
+                  echo "$path" >> data/schema-list.txt
+                fi
+              done
+          echo "schema-list.txt: $(wc -l < data/schema-list.txt 2>/dev/null || echo 0) entries"
+          for f in data/v*.txt; do
+            [ -f "$f" ] && echo "$(basename "$f"): $(wc -l < "$f") entries"
+          done
 
       - name: Commit schema index
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -27,4 +44,4 @@ jobs:
           commit_user_name: Nathan K
           commit_user_email: nathankidd@hey.com
           commit_author: Nathan K <nathankidd@hey.com>
-          file_pattern: data/schema-list.txt
+          file_pattern: "data/*.txt"
