@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "kube_schema"
+require "kube/schema"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

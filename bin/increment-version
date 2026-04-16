@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "erb"
-require_relative "../lib/kube_schema/version"
+require_relative "../lib/kube/schema/version"
 
 USAGE = <<~TEXT
   Usage: bin/increment-version <major|minor|patch>
@@ -15,7 +15,7 @@ unless %w[major minor patch].include?(segment)
   exit 1
 end
 
-current = KubeSchema::VERSION
+current = Kube::Schema::VERSION
 major, minor, patch = current.split(".").map(&:to_i)
 
 case segment
@@ -32,8 +32,8 @@ end
 
 version = "#{major}.#{minor}.#{patch}"
 
-template_path = File.expand_path("../lib/kube_schema/version.rb.erb", __dir__)
-output_path   = File.expand_path("../lib/kube_schema/version.rb", __dir__)
+template_path = File.expand_path("../lib/kube/schema/version.rb.erb", __dir__)
+output_path   = File.expand_path("../lib/kube/schema/version.rb", __dir__)
 
 template = ERB.new(File.read(template_path))
 result = template.result(binding)
@@ -41,4 +41,3 @@ result = template.result(binding)
 File.write(output_path, result)
 
 puts "#{current} -> #{version}"
-

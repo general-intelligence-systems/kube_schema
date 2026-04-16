@@ -2,13 +2,13 @@
 
 require "spec_helper"
 
-RSpec.describe KubeSchema::Instance do
+RSpec.describe Kube::Schema::Instance do
   subject(:instance) { described_class.new("1.34.4") }
 
   let(:mock_schema_json) { '{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"}}}' }
 
   before do
-    allow(KubeSchema::SchemaCache).to receive(:read).and_return(mock_schema_json)
+    allow(Kube::Schema::SchemaCache).to receive(:read).and_return(mock_schema_json)
   end
 
   describe "#initialize" do
@@ -17,7 +17,7 @@ RSpec.describe KubeSchema::Instance do
     end
 
     it "raises UnknownVersionError for a non-version string" do
-      expect { described_class.new("not-a-version") }.to raise_error(KubeSchema::UnknownVersionError)
+      expect { described_class.new("not-a-version") }.to raise_error(Kube::Schema::UnknownVersionError)
     end
   end
 
@@ -25,7 +25,7 @@ RSpec.describe KubeSchema::Instance do
     it "returns a Class that subclasses Resource" do
       klass = instance["Deployment"]
       expect(klass).to be_a(Class)
-      expect(klass).to be < KubeSchema::Resource
+      expect(klass).to be < Kube::Schema::Resource
     end
 
     it "caches resource classes by key" do
@@ -42,7 +42,7 @@ RSpec.describe KubeSchema::Instance do
       # Index paths are like "v1.34.4/apps/deployment_v1", so "apps/deployment" matches
       klass = instance["apps/deployment"]
       expect(klass).to be_a(Class)
-      expect(klass).to be < KubeSchema::Resource
+      expect(klass).to be < Kube::Schema::Resource
     end
 
     it "returns different classes for different resources" do
@@ -53,7 +53,7 @@ RSpec.describe KubeSchema::Instance do
 
     it "loads the schema from SchemaCache" do
       instance["Deployment"]
-      expect(KubeSchema::SchemaCache).to have_received(:read)
+      expect(Kube::Schema::SchemaCache).to have_received(:read)
     end
 
     it "attaches the parsed schema to the resource class" do

@@ -3,7 +3,7 @@
 require "spec_helper"
 require "tmpdir"
 
-RSpec.describe KubeSchema::SchemaCache do
+RSpec.describe Kube::Schema::SchemaCache do
   let(:tmpdir) { Dir.mktmpdir("kube_schema_cache_test") }
 
   before do
@@ -96,7 +96,7 @@ RSpec.describe KubeSchema::SchemaCache do
       allow(Net::HTTP).to receive(:get_response).and_return(response)
 
       expect { described_class.fetch("v1.34.4/nonexistent") }.to raise_error(
-        KubeSchema::SchemaCache::DownloadError, /HTTP 404/
+        Kube::Schema::SchemaCache::DownloadError, /HTTP 404/
       )
     end
   end

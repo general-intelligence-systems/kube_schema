@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe KubeSchema::Resource do
+RSpec.describe Kube::Schema::Resource do
   let(:mock_schema) do
     {
       "type" => "object",
@@ -17,7 +17,7 @@ RSpec.describe KubeSchema::Resource do
   let(:mock_schema_json) { JSON.generate(mock_schema) }
 
   before do
-    allow(KubeSchema::SchemaCache).to receive(:read).and_return(mock_schema_json)
+    allow(Kube::Schema::SchemaCache).to receive(:read).and_return(mock_schema_json)
   end
 
   describe ".schema" do
@@ -79,7 +79,7 @@ RSpec.describe KubeSchema::Resource do
     end
 
     context "with a schema-bearing subclass" do
-      let(:klass) { KubeSchema["Deployment"] }
+      let(:klass) { Kube::Schema["Deployment"] }
 
       it "returns true for data matching the schema" do
         resource = klass.new("apiVersion" => "apps/v1", "kind" => "Deployment")
@@ -106,8 +106,8 @@ RSpec.describe KubeSchema::Resource do
     end
 
     let(:klass) do
-      allow(KubeSchema::SchemaCache).to receive(:read).and_return(JSON.generate(schema_with_defaults))
-      KubeSchema["Deployment"]
+      allow(Kube::Schema::SchemaCache).to receive(:read).and_return(JSON.generate(schema_with_defaults))
+      Kube::Schema["Deployment"]
     end
 
     it "inserts default values into the data on initialization" do
@@ -127,7 +127,7 @@ RSpec.describe KubeSchema::Resource do
   end
 
   describe "instantiation via Instance lookup" do
-    let(:klass) { KubeSchema["Deployment"] }
+    let(:klass) { Kube::Schema["Deployment"] }
 
     it "returns a Resource instance from .new with a hash" do
       resource = klass.new({})

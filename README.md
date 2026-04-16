@@ -1,4 +1,4 @@
-# KubeSchema
+# Kube::Schema
 
 Ruby objects for Kubernetes OpenAPI schemas.
 
@@ -11,7 +11,7 @@ gem "kube_schema"
 ## Usage
 
 ```ruby
-Deployment = KubeSchema["1.33.6"]["Deployment"]
+Deployment = Kube::Schema["1.33.6"]["Deployment"]
 
 app = Deployment.new do
   self.description = "My app"
@@ -24,7 +24,7 @@ app.properties    # => {"apiVersion" => ..., "kind" => ..., ...}
 ```
 
 ```ruby
-class RailsApp < KubeSchema["1.33.6"]["Deployment"]
+class RailsApp < Kube::Schema["1.33.6"]["Deployment"]
   def is_the_best?
     true
   end

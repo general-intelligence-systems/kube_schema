@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe KubeSchema::SchemaIndex do
+RSpec.describe Kube::Schema::SchemaIndex do
   subject(:index) { described_class.new("1.34.4") }
 
   describe "#find" do

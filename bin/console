@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "kube_schema"
+require "kube/schema"
 require "irb"
 
 IRB.start(__FILE__)
