@@ -3,6 +3,23 @@
 require "spec_helper"
 
 RSpec.describe KubeSchema::Resource do
+  let(:mock_schema) do
+    {
+      "type" => "object",
+      "properties" => {
+        "apiVersion" => { "type" => "string", "enum" => ["apps/v1"] },
+        "kind" => { "type" => "string", "enum" => ["Deployment"] },
+        "replicas" => { "type" => "integer" }
+      }
+    }
+  end
+
+  let(:mock_schema_json) { JSON.generate(mock_schema) }
+
+  before do
+    allow(KubeSchema::SchemaCache).to receive(:read).and_return(mock_schema_json)
+  end
+
   describe ".schema" do
     it "returns nil on the base class" do
       expect(described_class.schema).to be_nil
@@ -16,8 +33,9 @@ RSpec.describe KubeSchema::Resource do
       expect(resource.to_h).to include(name: "my-deploy", kind: "Deployment")
     end
 
-    it "requires a hash argument (BlackHoleStruct rejects nil)" do
-      expect { described_class.new }.to raise_error(ArgumentError)
+    it "creates an empty resource when no arguments are given" do
+      resource = described_class.new
+      expect(resource.to_h).to eq({})
     end
 
     it "accepts a block for DSL-style initialization" do
@@ -54,6 +72,60 @@ RSpec.describe KubeSchema::Resource do
     end
   end
 
+  describe "#valid?" do
+    it "returns true on the base class (no schema)" do
+      resource = described_class.new("anything" => "goes")
+      expect(resource.valid?).to be true
+    end
+
+    context "with a schema-bearing subclass" do
+      let(:klass) { KubeSchema["Deployment"] }
+
+      it "returns true for data matching the schema" do
+        resource = klass.new("apiVersion" => "apps/v1", "kind" => "Deployment")
+        expect(resource.valid?).to be true
+      end
+
+      it "returns false for data violating the schema" do
+        resource = klass.new("replicas" => "not-a-number")
+        expect(resource.valid?).to be false
+      end
+    end
+  end
+
+  describe "schema defaults" do
+    let(:schema_with_defaults) do
+      {
+        "type" => "object",
+        "properties" => {
+          "replicas" => { "type" => "integer", "default" => 1 },
+          "paused" => { "type" => "boolean", "default" => false },
+          "name" => { "type" => "string" }
+        }
+      }
+    end
+
+    let(:klass) do
+      allow(KubeSchema::SchemaCache).to receive(:read).and_return(JSON.generate(schema_with_defaults))
+      KubeSchema["Deployment"]
+    end
+
+    it "inserts default values into the data on initialization" do
+      resource = klass.new({})
+      expect(resource.to_h).to include(replicas: 1, paused: false)
+    end
+
+    it "does not override explicitly provided values" do
+      resource = klass.new("replicas" => 3, "paused" => true)
+      expect(resource.to_h).to include(replicas: 3, paused: true)
+    end
+
+    it "merges defaults with provided values" do
+      resource = klass.new("name" => "my-deploy")
+      expect(resource.to_h).to include(name: "my-deploy", replicas: 1, paused: false)
+    end
+  end
+
   describe "instantiation via Instance lookup" do
     let(:klass) { KubeSchema["Deployment"] }
 
@@ -67,6 +139,11 @@ RSpec.describe KubeSchema::Resource do
         self.type = "custom"
       end
       expect(resource.to_h).to include(type: "custom")
+    end
+
+    it "has a schema attached to the class" do
+      expect(klass.schema).to be_a(Hash)
+      expect(klass.schema).to have_key("properties")
     end
   end
 end

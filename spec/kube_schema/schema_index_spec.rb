@@ -12,6 +12,11 @@ RSpec.describe KubeSchema::SchemaIndex do
       expect(result.downcase).to include("deployment")
     end
 
+    it "returns a path with the version prefix for kubernetes resources" do
+      result = index.find("apps/deployment")
+      expect(result).to start_with("v1.34.4/")
+    end
+
     it "is case-insensitive" do
       lower = index.find("deployment")
       upper = index.find("Deployment")
@@ -43,6 +48,10 @@ RSpec.describe KubeSchema::SchemaIndex do
     it "returns paths for the given version" do
       paths = index.kubernetes_paths
       expect(paths).not_to be_empty
+    end
+
+    it "includes the version prefix in each path" do
+      expect(index.kubernetes_paths).to all(start_with("v1.34.4/"))
     end
 
     it "strips .json extensions from paths" do

@@ -87,12 +87,12 @@ module KubeSchema
 
           Net::HTTP.get_response(uri).then do |response|
             unless response.is_a?(Net::HTTPSuccess)
-              raise DownloadError,
-                    "Failed to download schema: #{url} (HTTP #{response.code})"
+              raise DownloadError, "Failed to download schema: #{url} (HTTP #{response.code})"
             end
 
             FileUtils.mkdir_p(File.dirname(local))
             File.write(local, response.body)
+            local
           end
         end
     end

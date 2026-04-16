@@ -70,13 +70,34 @@ RSpec.describe KubeSchema::SchemaCache do
   end
 
   describe ".fetch" do
-    it "returns a local file when already cached" do
+    it "returns a local file path when already cached" do
       local = described_class.local_path("v1.34.4/deployment")
       FileUtils.mkdir_p(File.dirname(local))
       File.write(local, '{"type":"object"}')
 
       result = described_class.fetch("v1.34.4/deployment")
       expect(result).to eq(local)
+    end
+
+    it "downloads and returns the local file path when not cached" do
+      response = instance_double(Net::HTTPSuccess, body: '{"type":"object"}')
+      allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+      allow(Net::HTTP).to receive(:get_response).and_return(response)
+
+      result = described_class.fetch("v1.34.4/apps/deployment_v1")
+      expect(result).to be_a(String)
+      expect(result).to eq(described_class.local_path("v1.34.4/apps/deployment_v1"))
+      expect(File.exist?(result)).to be true
+    end
+
+    it "raises DownloadError on HTTP failure" do
+      response = instance_double(Net::HTTPNotFound, code: "404")
+      allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
+      allow(Net::HTTP).to receive(:get_response).and_return(response)
+
+      expect { described_class.fetch("v1.34.4/nonexistent") }.to raise_error(
+        KubeSchema::SchemaCache::DownloadError, /HTTP 404/
+      )
     end
   end
 
@@ -88,6 +109,15 @@ RSpec.describe KubeSchema::SchemaCache do
 
       content = described_class.read("v1.34.4/deployment")
       expect(content).to eq('{"type":"object"}')
+    end
+
+    it "downloads and returns file contents when not cached" do
+      response = instance_double(Net::HTTPSuccess, body: '{"type":"object","properties":{}}')
+      allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+      allow(Net::HTTP).to receive(:get_response).and_return(response)
+
+      content = described_class.read("v1.34.4/apps/deployment_v1")
+      expect(content).to eq('{"type":"object","properties":{}}')
     end
   end
 end

@@ -3,6 +3,11 @@
 require "spec_helper"
 
 RSpec.describe KubeSchema do
+  let(:mock_schema_json) { '{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"}}}' }
+
+  before do
+    allow(KubeSchema::SchemaCache).to receive(:read).and_return(mock_schema_json)
+  end
   describe "::VERSION" do
     it "is defined" do
       expect(KubeSchema::VERSION).not_to be_nil

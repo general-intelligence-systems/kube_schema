@@ -5,6 +5,12 @@ require "spec_helper"
 RSpec.describe KubeSchema::Instance do
   subject(:instance) { described_class.new("1.34.4") }
 
+  let(:mock_schema_json) { '{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"}}}' }
+
+  before do
+    allow(KubeSchema::SchemaCache).to receive(:read).and_return(mock_schema_json)
+  end
+
   describe "#initialize" do
     it "stores the version" do
       expect(instance.version).to eq("1.34.4")
@@ -33,7 +39,7 @@ RSpec.describe KubeSchema::Instance do
     end
 
     it "can look up by partial path matching the index format" do
-      # Index paths are like "apps/deployment_v1", so "apps/deployment" matches
+      # Index paths are like "v1.34.4/apps/deployment_v1", so "apps/deployment" matches
       klass = instance["apps/deployment"]
       expect(klass).to be_a(Class)
       expect(klass).to be < KubeSchema::Resource
@@ -43,6 +49,17 @@ RSpec.describe KubeSchema::Instance do
       deployment = instance["Deployment"]
       service = instance["Service"]
       expect(deployment).not_to eq(service)
+    end
+
+    it "loads the schema from SchemaCache" do
+      instance["Deployment"]
+      expect(KubeSchema::SchemaCache).to have_received(:read)
+    end
+
+    it "attaches the parsed schema to the resource class" do
+      klass = instance["Deployment"]
+      expect(klass.schema).to be_a(Hash)
+      expect(klass.schema).to have_key("properties")
     end
   end
 end

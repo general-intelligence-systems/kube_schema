@@ -38,13 +38,14 @@ module KubeSchema
           raise "No resource schema found for #{key}!!!!!!!"
         else
           @resource_classes[key] ||= begin
-            #schema_hash = @data["definitions"][key]
-            Class.new(::KubeSchema::Resource) do
-              #@schema = schema_hash
+            schema_hash = JSON.parse(KubeSchema::SchemaCache.read(path))
 
-              #def self.schema
-              #  @schema || superclass.schema
-              #end
+            Class.new(::KubeSchema::Resource) do
+              @schema = schema_hash
+
+              def self.schema
+                @schema || superclass.schema
+              end
             end
           end
         end
