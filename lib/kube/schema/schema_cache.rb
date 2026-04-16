@@ -19,8 +19,6 @@ module Kube
     module SchemaCache
       BASE_URL = 'https://raw.githubusercontent.com/general-intelligence-systems/kube_schema/refs/heads/schemas'
 
-      class DownloadError < StandardError; end
-
       class << self
         # Root directory for cached schemas.
         # Defaults to ~/.cache/kube_schema/schemas (or $XDG_CACHE_HOME/kube_schema/schemas).
@@ -88,7 +86,7 @@ module Kube
 
             Net::HTTP.get_response(uri).then do |response|
               unless response.is_a?(Net::HTTPSuccess)
-                raise DownloadError, "Failed to download schema: #{url} (HTTP #{response.code})"
+                raise Kube::DownloadError.new(url: url, status_code: response.code)
               end
 
               FileUtils.mkdir_p(File.dirname(local))

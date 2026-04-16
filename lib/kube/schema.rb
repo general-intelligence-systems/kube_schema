@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../kube/errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/instance'
@@ -7,9 +8,11 @@ require_relative 'schema/schema_cache'
 require_relative 'schema/schema_index'
 
 module Kube
+  def self.schema
+    Schema
+  end
+
   module Schema
-    class UnknownVersionError < StandardError; end
-    class IncorrectVersionFormat < StandardError; end
 
     @schema_version = nil
     @instances = {}
@@ -30,7 +33,7 @@ module Kube
         is_a_version = -> (key) { Gem::Version.correct?(key) }
 
         if key.start_with?("v") && Gem::Version.correct?(key.sub("v", ""))
-          raise IncorrectVersionFormat,
+          raise Kube::IncorrectVersionFormat,
             "\nDon't preface the version with a \"v\"." \
             "\nUse Kube::Schema[\"#{key.sub("v", "")}\"] instead."
         end
@@ -39,7 +42,7 @@ module Kube
           if has_version?(key)
             @instances[key] ||= Instance.new(key)
           else
-            raise UnknownVersionError.new(
+            raise Kube::UnknownVersionError.new(
               "\n#{key} is an unknown version..." +
               "\nUse `Kube::Schema.schema_versions` to get a list."
             )

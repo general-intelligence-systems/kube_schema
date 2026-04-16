@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "ostruct"
 require "black_hole_struct"
 require "json_schemer"
 
