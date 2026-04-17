@@ -9,7 +9,7 @@ require 'async/http/internet/instance'
 results = []
 
 Sync do
-  YAML.load_file(File.join(GEM_ROOT, 'data/orig/crds.yaml')).then do |urls|
+  YAML.load_file(File.join(GEM_ROOT, 'data/crds.yaml')).then do |urls|
     urls.each do |url|
       Async::HTTP::Internet.get(url) do |response|
         results << response.read
@@ -21,6 +21,6 @@ end
 results.join("\n---\n").then do |output|
   `mkdir -p data/crds`
 
-  target = File.join(GEM_ROOT, "data", "crds", "all.yaml")
+  target = File.join(GEM_ROOT, "data", "crds", "00-all-crds.yaml")
   File.write(target, output)
 end

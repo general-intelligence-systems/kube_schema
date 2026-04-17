@@ -2,6 +2,8 @@
 
 export KUBECONFIG=./kubeconfig.yaml
 
+mkdir -p data/crds
+
 kubectl() {
   docker compose exec -T server kubectl --kubeconfig /output/kubeconfig.yaml "$@"
 }
@@ -11,8 +13,21 @@ trap "docker compose down" EXIT
 
 until kubectl get nodes &>/dev/null; do echo "waiting for nodes..."; sleep 2; done
 
+kubectl get --raw /openapi/v2  | jq -r '.definitions | to_entries[].key' > data/crds/01-k8s-definitions-list.txt
+
 kubectl apply --validate=false -f - < data/crds/all.yaml
 kubectl wait --for=condition=Established crd --all --timeout=60s
-kubectl get --raw /openapi/v2 > data/crds/all.json
+kubectl get --raw /openapi/v2 > data/crds/02-full-schema.json
 
-kubectl get crds -o jsonpath='{.items[*].metadata.name}' > data/crds/crd-list.txt
+kubectl get --raw /openapi/v2  | jq -r '.definitions | to_entries[].key' > data/crds/03-crds-definitions-list.txt
+
+comm -23 \
+  <(sort data/crds/03-crds-definitions-list.txt) \
+  <(sort data/crds/01-k8s-definitions-list.txt) \
+  > data/crds/04-crd-only-definitions-list.txt
+
+jq --rawfile keys data/crds/04-crd-only-definitions-list.txt \
+  '($keys | split("\n") | map(select(length > 0))) as $k |
+   .definitions | with_entries(select(IN($k[]; .key)))' \
+  data/crds/02-full-schema.json \
+  > data/crds/05-crd-only-definitions.json

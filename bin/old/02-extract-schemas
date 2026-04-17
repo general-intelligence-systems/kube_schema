@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+exit
+
 require 'json'
 
 @kube_versions = %w[
@@ -16,7 +18,7 @@ require 'json'
 
 @kube_versions.map do |version|
   definitions =
-    JSON.parse(`jq -r '.definitions' 'data/orig/k8s.io/#{version}.json'`)
+    JSON.parse(`jq -r '.definitions' 'data/k8s.io/#{version}.json'`)
       .map { |key, value| [key, value] }.to_h
 
   #definitions.keys.map do |line|

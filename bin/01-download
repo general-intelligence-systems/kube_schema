@@ -8,8 +8,8 @@ require 'rubyshell'
 def wget(target, url) = `wget -O #{target} #{url}`
 def mkdir(value) = `mkdir #{value}`
 
-`rm -rf data/orig/kubectl.yaml data/orig/api-groups.yaml data/orig/k8s.io/*`
-`mkdir -p data/orig/crds`
+`rm -rf data/kubectl.yaml data/api-groups.yaml data/k8s.io/*`
+`mkdir -p data/crds`
 
 KUBEGIT = "https://raw.githubusercontent.com/kubernetes-sigs/reference-docs/refs/heads/master"
 KUBEVERSIONS = %w[
@@ -28,18 +28,18 @@ GEM_ROOT = File.expand_path("..", __dir__)
 data = {}
   
 KUBEVERSIONS.each do |version|
-  wget "data/orig/k8s.io/#{version}.json",
+  wget "data/k8s.io/#{version}.json",
     "#{KUBEGIT}/gen-resourcesdocs/api/#{version}/swagger.json"
 
-  filepath = File.join(GEM_ROOT, "data", "orig", "k8s.io", "#{version}.json")
+  filepath = File.join(GEM_ROOT, "data", "k8s.io", "#{version}.json")
 
   data[version] = JSON.parse(File.read(filepath))["definitions"].map do |name, object|
     object["x-kubernetes-group-version-kind"]
   end.reject(&:nil?)
 end
 
-wget "data/orig/kubectl.yaml", "#{KUBEGIT}/kubectl.yaml"
-wget "data/orig/api-groups.yaml", "#{KUBEGIT}/gen-apidocs/config/config.yaml"
+wget "data/kubectl.yaml", "#{KUBEGIT}/kubectl.yaml"
+wget "data/api-groups.yaml", "#{KUBEGIT}/gen-apidocs/config/config.yaml"
 
 #data.each do |key, value|
 #  puts "#{key}: #{value.count} total"

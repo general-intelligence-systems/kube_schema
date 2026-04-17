@@ -1,0 +1,8 @@
+io.cattle.helm.v1.HelmChart
+io.cattle.helm.v1.HelmChartConfig
+io.cattle.helm.v1.HelmChartConfigList
+io.cattle.helm.v1.HelmChartList
+io.cattle.k3s.v1.Addon
+io.cattle.k3s.v1.AddonList
+io.cattle.k3s.v1.ETCDSnapshotFile
+io.cattle.k3s.v1.ETCDSnapshotFileList
