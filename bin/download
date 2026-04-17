@@ -1,11 +1,15 @@
 #!/usr/bin/env ruby
 
+require 'bundler/setup'
 require 'json'
+require 'debug'
+require 'rubyshell'
 
 def wget(target, url) = `wget -O #{target} #{url}`
+def mkdir(value) = `mkdir #{value}`
 
-`rm -rf data/orig/kubectl.yaml data/orig/api-groups.yaml data/orig/k8s-v1.*.json`
-`mkdir -p data/orig`
+`rm -rf data/orig/kubectl.yaml data/orig/api-groups.yaml data/orig/k8s.io/*`
+`mkdir -p data/orig/crds`
 
 KUBEGIT = "https://raw.githubusercontent.com/kubernetes-sigs/reference-docs/refs/heads/master"
 KUBEVERSIONS = %w[
@@ -24,10 +28,10 @@ GEM_ROOT = File.expand_path("..", __dir__)
 data = {}
   
 KUBEVERSIONS.each do |version|
-  wget "data/orig/k8s-#{version}.json",
+  wget "data/orig/k8s.io/#{version}.json",
     "#{KUBEGIT}/gen-resourcesdocs/api/#{version}/swagger.json"
 
-  filepath = File.join(GEM_ROOT, "data", "orig", "k8s-#{version}.json")
+  filepath = File.join(GEM_ROOT, "data", "orig", "k8s.io", "#{version}.json")
 
   data[version] = JSON.parse(File.read(filepath))["definitions"].map do |name, object|
     object["x-kubernetes-group-version-kind"]
@@ -55,38 +59,38 @@ puts "#{GROUP_NAMES.sort.uniq.count} unique"
 File.write(File.join(GEM_ROOT, "data", "group-name-version.yaml"), GROUP_NAMES.sort.uniq.join("\n"))
 
 # ---------------------------------------------------------
-mkdir -p "data/crds/inference.networking.x-k8s.io"
-wget "data/crds/inference.networking.x-k8s.io",
+mkdir "-p data/orig/crds/inference.networking.x-k8s.io"
+wget "data/orig/crds/inference.networking.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencepoolimports.yaml"
 
-wget "data/crds/inference.networking.x-k8s.io",
+wget "data/orig/crds/inference.networking.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferenceobjectives.yaml"
 
-wget "data/crds/inference.networking.x-k8s.io",
+wget "data/orig/crds/inference.networking.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencemodelrewrites.yaml"
 
-wget "data/crds/inference.networking.x-k8s.io",
+wget "data/orig/crds/inference.networking.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.k8s.io_inferencepools.yaml"
 
 
 # ---------------------------------------------------------
-mkdir -p "data/crds/externaldns.k8s.io"
-wget "data/crds/externaldns.k8s.io",
+mkdir "-p data/orig/crds/externaldns.k8s.io"
+wget "data/orig/crds/externaldns.k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/heads/master/charts/external-dns/crds/dnsendpoints.externaldns.k8s.io.yaml"
 
 
 # ---------------------------------------------------------
-mkdir -p "data/crds/agents.x-k8s.io",
-wget "data/crds/agents.x-k8s.io",
+mkdir "-p data/orig/crds/agents.x-k8s.io"
+wget "data/orig/crds/agents.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/agents.x-k8s.io_sandboxes.yaml"
 
 # ---------------------------------------------------------
-mkdir -p "data/crds/extensions.agents.x-k8s.io",
-wget "data/crds/extensions.agents.x-k8s.io",
+mkdir "-p data/orig/crds/extensions.agents.x-k8s.io"
+wget "data/orig/crds/extensions.agents.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxclaims.yaml"
 
-wget "data/crds/extensions.agents.x-k8s.io",
+wget "data/orig/crds/extensions.agents.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxtemplates.yaml"
 
-wget "data/crds/extensions.agents.x-k8s.io",
+wget "data/orig/crds/extensions.agents.x-k8s.io",
   "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxwarmpools.yaml"
