@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-wget -P data/ https://github.com/kubernetes-sigs/reference-docs/blob/master/kubectl.yaml

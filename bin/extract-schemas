@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+
+require 'json'
+
+@kube_versions = %w[
+  v1.19
+  v1.21
+  v1.31
+  v1.32
+  v1.33
+  v1.34
+  v1.35
+]
+
+@kube = {}
+
+@kube_versions.map do |version|
+  definitions =
+    JSON.parse(`jq -r '.definitions' 'data/orig/k8s-#{version}.json'`)
+      .map { |key, value| [key, value] }.to_h
+
+  #definitions.keys.map do |line|
+  #  line
+  #    .gsub("io.k8s.api.", "")
+  #    .gsub("io.k8s.apiextensions-apiserver.pkg.apis.", "")
+  #    .gsub("io.k8s.apimachinery.pkg.apis.", "")
+  #    .gsub("io.k8s.apimachinery.pkg.apis.", "")
+  #    .gsub("io.k8s.kube-aggregator.pkg.apis.", "")
+  #end.reject do |line|
+  #  line.include?('RawExtension') ||
+  #  line.include?('IntOrString') ||
+  #  line.include?('version.Info') ||
+  #  line.include?('resource.Quantity')
+  #end
+
+  @kube[version] = definitions
+end
+
+@kube.each do |version, definitions|
+  `mkdir -p data/k8s.io/#{version}`
+
+  definitions.each do |name, data|
+    File.write "data/k8s.io/#{version}/#{name}.json", JSON.generate(data)
+  end
+end
+
+## Built-in resources: one JSON file per OpenAPI key
+#jq -r '.definitions | to_entries[].key' /tmp/openapi-v2.json | while read -r key; do
+#  safe=$(echo "$key" | tr '/.' '__')
+#  jq --arg k "$key" '.definitions[$k]' /tmp/openapi-v2.json > "/tmp/schemas/builtin/${safe}.json"
+#done
+#
+#
+## CRDs: one JSON file per CRD+version
+#jq -c '.items[]' /tmp/crds.json | while read -r crd; do
+#  name=$(jq -r '.metadata.name' <<<"$crd")
+#  ns=$(jq -r '.metadata.namespace // "cluster"' <<<"$crd")
+#  jq -c '.spec.versions[] | select(.schema.openAPIV3Schema != null)' <<<"$crd" |
+#  while read -r ver; do
+#    v=$(jq -r '.name' <<<"$ver")
+#    jq '.schema.openAPIV3Schema' <<<"$ver" > "/tmp/schemas/crd/${ns}__${name}__${v}.json"
+#  done
+#done
