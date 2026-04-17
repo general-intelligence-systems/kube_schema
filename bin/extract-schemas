@@ -40,6 +40,26 @@ end
   `mkdir -p data/k8s.io/#{version}`
 
   definitions.each do |name, data|
+    #gvk = data["x-kubernetes-group-version-kind"]
+
+    #if gvk.is_a?(Array)
+    #  gvk = gvk.first
+    #end
+
+    #if gvk
+    #  gvk = "#{gvk["group"]}.#{gvk["version"]}.#{gvk["key"]}"
+    #else
+    #  gvk = name
+    #    .gsub("io.k8s.api.", "")
+    #    .gsub("io.k8s.apiextensions-apiserver.pkg.apis.", "")
+    #    .gsub("io.k8s.apimachinery.pkg.apis.", "")
+    #    .gsub("io.k8s.apimachinery.pkg.api.", "")
+    #    .gsub("io.k8s.apimachinery.pkg", "")
+    #    .gsub("io.k8s.kube-aggregator.pkg.apis.", "")
+    #end
+
+    #puts gvk
+
     File.write "data/k8s.io/#{version}/#{name}.json", JSON.generate(data)
   end
 end
