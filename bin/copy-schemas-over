@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+mkdir -p schemas
+
+git show schemas2:data/crds/05-crd-only-definitions.json > schemas/crd-definitions.json
+
+git ls-tree --name-only schemas2 data/k8s.io/ | while read -r path; do
+  git show "schemas2:$path" > "schemas/$(basename "$path")"
+done
+
