@@ -9,7 +9,7 @@ require 'async/http/internet/instance'
 results = []
 
 Sync do
-  YAML.load_file(File.join(GEM_ROOT, 'data/crds.yaml')).then do |urls|
+  YAML.load_file(File.join(GEM_ROOT, 'data/crd-list.yaml')).then do |urls|
     urls.each do |url|
       Async::HTTP::Internet.get(url) do |response|
         results << response.read

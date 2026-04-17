@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+bin/01-download
+bin/03-download-crds
+bin/04-get-crd-json

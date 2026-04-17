@@ -15,7 +15,7 @@ until kubectl get nodes &>/dev/null; do echo "waiting for nodes..."; sleep 2; do
 
 kubectl get --raw /openapi/v2  | jq -r '.definitions | to_entries[].key' > data/crds/01-k8s-definitions-list.txt
 
-kubectl apply --validate=false -f - < data/crds/all.yaml
+kubectl apply --validate=false -f - < data/crds/00-all-crds.yaml
 kubectl wait --for=condition=Established crd --all --timeout=60s
 kubectl get --raw /openapi/v2 > data/crds/02-full-schema.json
 
