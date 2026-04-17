@@ -10,6 +10,10 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         ruby = pkgs.ruby_3_4; # Specify version
+        kubectlWithKubeconfig = pkgs.writeShellScriptBin "kubectl" ''
+          #!${pkgs.bash}/bin/bash
+          KUBECONFIG="$PWD/kubeconfig.yaml" ${pkgs.kubectl}/bin/kubectl "$@"
+        '';
       in
       {
         devShells.default = pkgs.mkShell {
@@ -21,6 +25,7 @@
             ruby
             pkgs.libyaml # psych gem
             pkgs.openssl # openssl gem
+            kubectlWithKubeconfig
           ];
 
           shellHook = ''
@@ -29,6 +34,7 @@
             export PATH="$GEM_HOME/bin:$PATH"
             export BUNDLE_PATH="$GEM_HOME"
             export BUNDLE_BIN="$GEM_HOME/bin"
+            export KUBECONFIG="$PWD/kubeconfig.yaml"
           '';
         };
       }

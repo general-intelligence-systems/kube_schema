@@ -6,3 +6,5 @@ gem "json", "~> 2.19"
 gem "rubyshell", "~> 1.5"
 
 gem "debug", "~> 1.11"
+
+gem "async-http", "~> 0.95.0"

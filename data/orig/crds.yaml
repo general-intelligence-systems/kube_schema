@@ -1,0 +1,14 @@
+# Gateway API Inference
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencepoolimports.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferenceobjectives.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencemodelrewrites.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.k8s.io_inferencepools.yaml"
+
+# External DNS
+- "https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/heads/master/charts/external-dns/crds/dnsendpoints.externaldns.k8s.io.yaml"
+
+# Agent Sandbox
+- "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/agents.x-k8s.io_sandboxes.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxclaims.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxtemplates.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/heads/main/k8s/crds/extensions.agents.x-k8s.io_sandboxwarmpools.yaml"

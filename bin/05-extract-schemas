@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+
+require 'json'
+
+definitions =
+  JSON.parse(`jq -r '.definitions' 'data/crds/all.json'`)
+    .map { |key, value| [key, value] }.to_h
+
+crd_groups = File.read('data/crds/crd-list.txt')
+  .split(" ")
+  .map { |crd| crd.split('.', 2).last }
+  .uniq
+
+crd_definitions = definitions.select do |_, value|
+  (value["x-kubernetes-group-version-kind"] || [])
+    .any? { |gvk| crd_groups.include?(gvk["group"]) }
+end
+
+#puts crd_definitions.keys
+#exit
+
+`mkdir -p data/crds`
+`mkdir -p data/crds/definitions`
+
+crd_definitions.each do |name, data|
+  gvk = data["x-kubernetes-group-version-kind"]
+
+  if gvk.is_a?(Array)
+    gvk = gvk.first
+    if gvk["group"].length < 1
+      gvk["group"] = "core"
+      `mkdir -p data/crds/#{gvk['group']}/#{gvk['version']}`
+      gvk = "core/#{gvk["version"]}/#{gvk["kind"]}"
+    else
+      `mkdir -p data/crds/#{gvk['group']}/#{gvk['version']}`
+      gvk = "#{gvk["group"]}/#{gvk["version"]}/#{gvk["kind"]}"
+    end
+
+    File.write "data/crds/#{gvk}.json", JSON.generate(data)
+  else
+    gvk = name
+    File.write "data/crds/definitions/#{gvk}.json", JSON.generate(data)
+  end
+end

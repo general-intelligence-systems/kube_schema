@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+
+GEM_ROOT = File.expand_path("..", __dir__)
+
+require 'bundler/setup'
+require 'yaml'
+require 'async/http/internet/instance'
+
+results = []
+
+Sync do
+  YAML.load_file(File.join(GEM_ROOT, 'data/orig/crds.yaml')).then do |urls|
+    urls.each do |url|
+      Async::HTTP::Internet.get(url) do |response|
+        results << response.read
+      end
+    end
+  end
+end
+
+results.join("\n---\n").then do |output|
+  `mkdir -p data/crds`
+
+  target = File.join(GEM_ROOT, "data", "crds", "all.yaml")
+  File.write(target, output)
+end

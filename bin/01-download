@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+
+require 'bundler/setup'
+require 'json'
+require 'debug'
+require 'rubyshell'
+
+def wget(target, url) = `wget -O #{target} #{url}`
+def mkdir(value) = `mkdir #{value}`
+
+`rm -rf data/orig/kubectl.yaml data/orig/api-groups.yaml data/orig/k8s.io/*`
+`mkdir -p data/orig/crds`
+
+KUBEGIT = "https://raw.githubusercontent.com/kubernetes-sigs/reference-docs/refs/heads/master"
+KUBEVERSIONS = %w[
+  v1.19
+  v1.20
+  v1.21
+  v1.31
+  v1.32
+  v1.33
+  v1.34
+  v1.35
+]
+
+GEM_ROOT = File.expand_path("..", __dir__)
+
+data = {}
+  
+KUBEVERSIONS.each do |version|
+  wget "data/orig/k8s.io/#{version}.json",
+    "#{KUBEGIT}/gen-resourcesdocs/api/#{version}/swagger.json"
+
+  filepath = File.join(GEM_ROOT, "data", "orig", "k8s.io", "#{version}.json")
+
+  data[version] = JSON.parse(File.read(filepath))["definitions"].map do |name, object|
+    object["x-kubernetes-group-version-kind"]
+  end.reject(&:nil?)
+end
+
+wget "data/orig/kubectl.yaml", "#{KUBEGIT}/kubectl.yaml"
+wget "data/orig/api-groups.yaml", "#{KUBEGIT}/gen-apidocs/config/config.yaml"
+
+#data.each do |key, value|
+#  puts "#{key}: #{value.count} total"
+#end
+#
+#puts
+#GROUP_NAMES = data.values.flatten.map do |gvk|
+#  "#{gvk["group"].empty? ? "core" : gvk["group"]}/#{gvk["kind"]}/#{gvk["version"]}"
+#end
+#
+#puts
+#GROUP_NAMES.sort.uniq.each do |x|
+#  puts "#{x}"
+#end
+#puts
+#puts "#{GROUP_NAMES.sort.uniq.count} unique"
+#File.write(File.join(GEM_ROOT, "data", "group-name-version.yaml"), GROUP_NAMES.sort.uniq.join("\n"))
+

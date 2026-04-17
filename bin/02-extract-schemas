@@ -16,7 +16,7 @@ require 'json'
 
 @kube_versions.map do |version|
   definitions =
-    JSON.parse(`jq -r '.definitions' 'data/orig/k8s-#{version}.json'`)
+    JSON.parse(`jq -r '.definitions' 'data/orig/k8s.io/#{version}.json'`)
       .map { |key, value| [key, value] }.to_h
 
   #definitions.keys.map do |line|
