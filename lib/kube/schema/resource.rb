@@ -10,44 +10,52 @@ module Kube
       # which is a JSONSchemer::Schema object, and .defaults which
       # provides apiVersion and kind derived from the GVK metadata.
       def initialize(hash = {}, &block)
-        hash = deep_stringify_keys(hash)
+        deep_stringify_keys(hash).then do |hash|
+          @data = BlackHoleStruct.new(hash)
+        end
 
-        @data = BlackHoleStruct.new(hash)
-        @data.instance_exec(&block) if block
+        if block_given?
+          @data.instance_exec(&block)
+        end
       end
+
+      def apiVersion = @data.apiVersion
+      def kind       = @data.kind
+      def spec       = @data.spec
+      def metadata   = @data.spec
 
       # Gets overridden by the factory in Kube::Schema::Instance
-      def self.schema
-        nil
-      end
+      def self.schema = nil
 
       # Gets overridden by the factory in Kube::Schema::Instance.
       # Returns a frozen Hash like { "apiVersion" => "apps/v1", "kind" => "Deployment" }
-      def self.defaults
-        nil
-      end
+      def self.defaults = nil
 
       def valid?
-        return true if self.class.schema.nil?
-
-        self.class.schema.valid?(deep_stringify_keys(to_h))
+        if self.class.schema.nil?
+          true
+        else
+          self.class.schema.valid?(deep_stringify_keys(to_h))
+        end
       end
 
       # Like #valid? but raises Kube::ValidationError with details on failure.
       # The error message includes the resource kind and name for context.
       def valid!
-        return true if self.class.schema.nil?
+        if self.class.schema.nil?
+          true
+        else
+          data = deep_stringify_keys(to_h)
+          errors = self.class.schema.validate(data).to_a
 
-        data = deep_stringify_keys(to_h)
-        errors = self.class.schema.validate(data).to_a
+          unless errors.empty?
+            kind = self.class.defaults&.dig("kind")
+            name = data.dig("metadata", "name")
+            raise Kube::ValidationError.new(errors, kind: kind, name: name, manifest: data)
+          end
 
-        unless errors.empty?
-          kind = self.class.defaults&.dig("kind")
-          name = data.dig("metadata", "name")
-          raise Kube::ValidationError.new(errors, kind: kind, name: name, manifest: data)
+          true
         end
-
-        true
       end
 
       # Returns the resource data as a Hash. Defaults (apiVersion, kind)
