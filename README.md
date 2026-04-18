@@ -122,7 +122,7 @@ bad.to_yaml  # raises Kube::ValidationError
 
 Validation errors render annotated YAML with the problems highlighted inline, missing required keys injected, and color-coded diagnostics:
 
-![Validation error output](docs/validation-error.png)
+![Validation error output](assets/validation-error.png)
 
 ## Manifests
 
