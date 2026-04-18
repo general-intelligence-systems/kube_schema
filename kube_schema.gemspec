@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
     Abstractions are God. Let's give praise and build on the shoulders of giants by using objects to represent schemas. It was written and to it became.
   DESC
 
-  spec.homepage = "https://github.com/n-at-han-k/kube_schema"
+  spec.homepage = "https://github.com/general-intelligence-systems/kube_schema"
   spec.license = "Apache-2.0"
   spec.required_ruby_version = ">= 3.2.0"
 
