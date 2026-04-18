@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    kube_schema (1.1.0)
+    kube_schema (1.1.1)
       black_hole_struct (~> 0.1)
       json_schemer (~> 2.5)
       rubyshell (~> 1.5)
