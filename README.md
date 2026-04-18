@@ -15,6 +15,22 @@ Kube::Schema["Deployment"].new {
 
 No YAML. No hash literals. Just Ruby blocks that know their schema.
 
+## Contents
+
+- [Install](#install)
+- [Resources](#resources)
+- [The block DSL](#the-block-dsl)
+- [Subclassing](#subclassing)
+- [Validation](#validation)
+- [Error messages](#error-messages)
+- [Manifests](#manifests)
+  - [File I/O](#file-io)
+  - [Composition](#composition)
+  - [Enumerable](#enumerable)
+- [Schema versions](#schema-versions)
+- [Related projects](#related-projects)
+- [Built with](#built-with)
+
 ## Install
 
 ```
@@ -120,7 +136,9 @@ bad.valid!
 bad.to_yaml  # raises Kube::ValidationError
 ```
 
-Validation errors render annotated YAML with the problems highlighted inline, missing required keys injected, and color-coded diagnostics:
+## Error messages
+
+Validation errors render annotated YAML with color-coded diagnostics. Error lines are highlighted in red, missing required keys are injected inline, and each problem gets a clear explanation:
 
 ![Validation error output](assets/validation-error.png)
 
