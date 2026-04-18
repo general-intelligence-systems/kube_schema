@@ -3,11 +3,6 @@
 require "spec_helper"
 
 RSpec.describe Kube::Schema do
-  let(:mock_schema_json) { '{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"}}}' }
-
-  before do
-    allow(Kube::Schema::SchemaCache).to receive(:read).and_return(mock_schema_json)
-  end
   describe "::VERSION" do
     it "is defined" do
       expect(Kube::Schema::VERSION).not_to be_nil
@@ -52,22 +47,20 @@ RSpec.describe Kube::Schema do
   describe ".[]" do
     context "with a version string" do
       it "returns an Instance for a known version" do
-        instance = Kube::Schema["1.33.6"]
+        instance = Kube::Schema["1.34"]
         expect(instance).to be_a(Kube::Schema::Instance)
-        expect(instance.version).to eq("1.33.6")
+        expect(instance.version).to eq("1.34")
       end
 
       it "caches Instance objects by version" do
-        a = Kube::Schema["1.33.6"]
-        b = Kube::Schema["1.33.6"]
+        a = Kube::Schema["1.34"]
+        b = Kube::Schema["1.34"]
         expect(a).to be(b)
       end
 
       it "raises UnknownVersionError for an invalid version" do
         expect { Kube::Schema["0.0.1"] }.to raise_error(Kube::UnknownVersionError)
       end
-
-
     end
 
     context "with a resource name" do
@@ -76,36 +69,20 @@ RSpec.describe Kube::Schema do
         expect(klass).to be_a(Class)
         expect(klass).to be < Kube::Schema::Resource
       end
-
-      it "returns different class objects on repeated calls (not cached at module level)" do
-        a = Kube::Schema["Deployment"]
-        b = Kube::Schema["Deployment"]
-        # Each call creates a new Instance(DEFAULT_VERSION) so the resource classes are not shared
-        expect(a).not_to be(b)
-      end
-    end
-
-    context "with a partial path query" do
-      it "returns a Class that subclasses Resource" do
-        # Index paths use format like "flowcontrol.apiserver.k8s.io/watchevent_v1"
-        klass = Kube::Schema["flowcontrol.apiserver.k8s.io/watchevent"]
-        expect(klass).to be_a(Class)
-        expect(klass).to be < Kube::Schema::Resource
-      end
     end
 
     context "with a 'v'-prefixed version string" do
       it "raises IncorrectVersionFormat" do
-        expect { Kube::Schema["v1.33.6"] }.to raise_error(
+        expect { Kube::Schema["v1.34"] }.to raise_error(
           Kube::IncorrectVersionFormat,
           /Don't preface the version with a "v"/
         )
       end
 
       it "suggests the correct format in the error message" do
-        expect { Kube::Schema["v1.33.6"] }.to raise_error(
+        expect { Kube::Schema["v1.34"] }.to raise_error(
           Kube::IncorrectVersionFormat,
-          /Use Kube::Schema\["1\.33\.6"\] instead/
+          /Use Kube::Schema\["1\.34"\] instead/
         )
       end
     end

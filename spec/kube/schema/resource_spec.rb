@@ -3,33 +3,36 @@
 require "spec_helper"
 
 RSpec.describe Kube::Schema::Resource do
-  let(:mock_schema) do
-    {
-      "type" => "object",
-      "properties" => {
-        "apiVersion" => { "type" => "string", "enum" => ["apps/v1"] },
-        "kind" => { "type" => "string", "enum" => ["Deployment"] },
-        "replicas" => { "type" => "integer" }
-      }
-    }
-  end
-
-  let(:mock_schema_json) { JSON.generate(mock_schema) }
-
-  before do
-    allow(Kube::Schema::SchemaCache).to receive(:read).and_return(mock_schema_json)
-  end
-
   describe ".schema" do
     it "returns nil on the base class" do
       expect(described_class.schema).to be_nil
     end
   end
 
+  describe ".defaults" do
+    it "returns nil on the base class" do
+      expect(described_class.defaults).to be_nil
+    end
+
+    it "returns apiVersion and kind for a schema-bearing subclass" do
+      klass = Kube::Schema["Deployment"]
+      expect(klass.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
+    end
+
+    it "returns correct apiVersion for core resources (no group)" do
+      klass = Kube::Schema["Pod"]
+      expect(klass.defaults).to eq({ "apiVersion" => "v1", "kind" => "Pod" })
+    end
+
+    it "returns correct apiVersion for grouped resources" do
+      klass = Kube::Schema["NetworkPolicy"]
+      expect(klass.defaults).to eq({ "apiVersion" => "networking.k8s.io/v1", "kind" => "NetworkPolicy" })
+    end
+  end
+
   describe "#initialize" do
     it "accepts a hash" do
       resource = described_class.new("name" => "my-deploy", "kind" => "Deployment")
-      # BlackHoleStruct symbolizes keys
       expect(resource.to_h).to include(name: "my-deploy", kind: "Deployment")
     end
 
@@ -39,10 +42,12 @@ RSpec.describe Kube::Schema::Resource do
     end
 
     it "accepts a block for DSL-style initialization" do
-      resource = described_class.new({}) do
-        self.type = "custom"
-      end
-      expect(resource.to_h).to include(type: "custom")
+      resource = described_class.new {
+        self.kind = "Deployment"
+        metadata.name = "test"
+      }
+      expect(resource.to_h).to include(kind: "Deployment")
+      expect(resource.to_h[:metadata][:name]).to eq("test")
     end
   end
 
@@ -50,6 +55,28 @@ RSpec.describe Kube::Schema::Resource do
     it "returns a hash representation" do
       resource = described_class.new("a" => 1)
       expect(resource.to_h).to be_a(Hash)
+    end
+
+    context "with a schema-bearing subclass" do
+      let(:klass) { Kube::Schema["Deployment"] }
+
+      it "automatically includes apiVersion and kind from defaults" do
+        resource = klass.new {
+          metadata.name = "test"
+        }
+        expect(resource.to_h[:apiVersion]).to eq("apps/v1")
+        expect(resource.to_h[:kind]).to eq("Deployment")
+        expect(resource.to_h[:metadata][:name]).to eq("test")
+      end
+
+      it "cannot override apiVersion or kind -- they are authoritative" do
+        resource = klass.new {
+          self.apiVersion = "apps/v1beta1"
+          self.kind = "NotADeployment"
+        }
+        expect(resource.to_h[:apiVersion]).to eq("apps/v1")
+        expect(resource.to_h[:kind]).to eq("Deployment")
+      end
     end
   end
 
@@ -81,69 +108,318 @@ RSpec.describe Kube::Schema::Resource do
     context "with a schema-bearing subclass" do
       let(:klass) { Kube::Schema["Deployment"] }
 
-      it "returns true for data matching the schema" do
-        resource = klass.new("apiVersion" => "apps/v1", "kind" => "Deployment")
+      it "returns true for valid data (apiVersion/kind come from defaults)" do
+        resource = klass.new
         expect(resource.valid?).to be true
       end
 
       it "returns false for data violating the schema" do
-        resource = klass.new("replicas" => "not-a-number")
+        resource = klass.new {
+          spec.replicas = "not_a_number"
+        }
         expect(resource.valid?).to be false
       end
     end
   end
 
-  describe "schema defaults" do
-    let(:schema_with_defaults) do
-      {
-        "type" => "object",
-        "properties" => {
-          "replicas" => { "type" => "integer", "default" => 1 },
-          "paused" => { "type" => "boolean", "default" => false },
-          "name" => { "type" => "string" }
+  describe "#valid!" do
+    it "returns true on the base class (no schema)" do
+      resource = described_class.new("anything" => "goes")
+      expect(resource.valid!).to be true
+    end
+
+    context "with a schema-bearing subclass" do
+      let(:klass) { Kube::Schema["Deployment"] }
+
+      it "returns true for valid data" do
+        resource = klass.new
+        expect(resource.valid!).to be true
+      end
+
+      it "raises ValidationError for data violating the schema" do
+        resource = klass.new {
+          spec.replicas = "not_a_number"
         }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError)
+      end
+
+      it "includes error details in the exception" do
+        resource = klass.new {
+          spec.replicas = "not_a_number"
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError, /Schema validation failed/)
+      end
+
+      it "shows the exact key path and value for type errors" do
+        resource = klass.new {
+          metadata.name = "web"
+          spec.replicas = "not_a_number"
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError) do |error|
+          expect(error.message).to include('spec.replicas = "not_a_number" — expected integer, got String')
+        end
+      end
+
+      it "shows which required keys are missing" do
+        resource = klass.new {
+          metadata.name = "example"
+          spec.replicas = 1
+          spec.template.spec.containers = [{ name: "app", image: "ruby:latest" }]
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError) do |error|
+          expect(error.message).to include("spec.selector is required but missing")
+        end
+      end
+
+      it "includes the resource kind in the error header" do
+        resource = klass.new {
+          metadata.name = "web"
+          spec.replicas = "bad"
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError) do |error|
+          expect(error.message).to include("Schema validation failed for Deployment")
+        end
+      end
+
+      it "includes the resource name in the error header when available" do
+        resource = klass.new {
+          metadata.name = "my-app"
+          spec.replicas = "bad"
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError) do |error|
+          expect(error.message).to include('Deployment "my-app"')
+        end
+      end
+
+      it "omits the resource name when metadata.name is not set" do
+        resource = klass.new {
+          spec.replicas = "bad"
+        }
+        expect { resource.valid! }.to raise_error(Kube::ValidationError) do |error|
+          header = error.message.lines.find { |l| l.include?("Schema validation failed") }
+          expect(header).to include("Schema validation failed for Deployment")
+          expect(header).not_to match(/Deployment\s+"/)  # no quoted name after kind
+        end
+      end
+
+      it "exposes the raw errors array" do
+        resource = klass.new {
+          spec.replicas = "not_a_number"
+        }
+        begin
+          resource.valid!
+        rescue Kube::ValidationError => e
+          expect(e.errors).to be_an(Array)
+          expect(e.errors).not_to be_empty
+        end
+      end
+    end
+  end
+
+  describe "#to_yaml" do
+    it "returns clean Kubernetes YAML on the base class" do
+      resource = described_class.new("kind" => "Pod", "apiVersion" => "v1")
+      yaml = resource.to_yaml
+
+      expect(yaml).to include("kind: Pod")
+      expect(yaml).to include("apiVersion: v1")
+      expect(yaml).not_to include("BlackHoleStruct")
+      expect(yaml).not_to include("!ruby/object")
+    end
+
+    it "uses string keys, not symbol keys" do
+      resource = described_class.new("kind" => "Pod")
+      yaml = resource.to_yaml
+
+      expect(yaml).not_to match(/:\w+:/)
+      expect(yaml).to include("kind: Pod")
+    end
+
+    it "produces parseable YAML that round-trips" do
+      resource = described_class.new("kind" => "Pod", "apiVersion" => "v1")
+      parsed = YAML.safe_load(resource.to_yaml)
+
+      expect(parsed).to be_a(Hash)
+      expect(parsed["kind"]).to eq("Pod")
+      expect(parsed["apiVersion"]).to eq("v1")
+    end
+
+    it "raises ValidationError when the resource is invalid" do
+      klass = Kube::Schema["Deployment"]
+      resource = klass.new {
+        spec.replicas = "not_a_number"
+      }
+      expect { resource.to_yaml }.to raise_error(Kube::ValidationError)
+    end
+
+    it "raises ValidationError for an incomplete Deployment missing selector" do
+      klass = Kube::Schema["Deployment"]
+      resource = klass.new {
+        metadata.namespace = "example"
+        metadata.name = "example-deployment"
+        spec.replicas = 1
+        spec.template.spec.containers = [
+          { name: "app", image: "ruby:latest" }
+        ]
+      }
+      expect { resource.to_yaml }.to raise_error(Kube::ValidationError)
+    end
+
+    context "with a full Deployment (no manual apiVersion/kind)" do
+      let(:deployment) do
+        Kube::Schema["Deployment"].new {
+          metadata.name = "nginx-deployment"
+          metadata.namespace = "shopping-cart"
+          metadata.labels = { app: "nginx" }
+          spec.replicas = 3
+          spec.selector.matchLabels = { app: "nginx" }
+          spec.template.metadata.labels = { app: "nginx" }
+          spec.template.spec.containers = [
+            { name: "nginx", image: "nginx:1.19.5", ports: [{ containerPort: 80 }] }
+          ]
+        }
+      end
+
+      it "produces valid Kubernetes Deployment YAML" do
+        yaml = deployment.to_yaml
+        parsed = YAML.safe_load(yaml)
+
+        expect(parsed).to be_a(Hash)
+        expect(parsed["apiVersion"]).to eq("apps/v1")
+        expect(parsed["kind"]).to eq("Deployment")
+        expect(parsed["metadata"]["name"]).to eq("nginx-deployment")
+        expect(parsed["metadata"]["namespace"]).to eq("shopping-cart")
+        expect(parsed["metadata"]["labels"]).to eq({ "app" => "nginx" })
+        expect(parsed["spec"]["replicas"]).to eq(3)
+        expect(parsed["spec"]["selector"]["matchLabels"]).to eq({ "app" => "nginx" })
+        expect(parsed["spec"]["template"]["metadata"]["labels"]).to eq({ "app" => "nginx" })
+
+        containers = parsed["spec"]["template"]["spec"]["containers"]
+        expect(containers).to be_an(Array)
+        expect(containers.length).to eq(1)
+        expect(containers[0]["name"]).to eq("nginx")
+        expect(containers[0]["image"]).to eq("nginx:1.19.5")
+        expect(containers[0]["ports"]).to eq([{ "containerPort" => 80 }])
+      end
+
+      it "does not contain Ruby object serialization artifacts" do
+        yaml = deployment.to_yaml
+
+        expect(yaml).not_to include("!ruby/object")
+        expect(yaml).not_to include("BlackHoleStruct")
+        expect(yaml).not_to include("table:")
+      end
+
+      it "looks like real kubectl YAML output" do
+        yaml = deployment.to_yaml
+
+        expect(yaml).to include("apiVersion: apps/v1")
+        expect(yaml).to include("kind: Deployment")
+        expect(yaml).to include("name: nginx-deployment")
+        expect(yaml).to include("namespace: shopping-cart")
+        expect(yaml).to include("replicas: 3")
+        expect(yaml).to include("image: nginx:1.19.5")
+        expect(yaml).to include("containerPort: 80")
+      end
+
+      it "exactly matches real Kubernetes Deployment YAML" do
+        expected_yaml = <<~YAML
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nginx-deployment
+            namespace: shopping-cart
+            labels:
+              app: nginx
+          spec:
+            replicas: 3
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.19.5
+                  ports:
+                  - containerPort: 80
+        YAML
+
+        expect(deployment.to_yaml).to eq(expected_yaml)
+      end
+
+      it "round-trips through YAML.safe_load" do
+        parsed = YAML.safe_load(deployment.to_yaml)
+        expect(parsed["apiVersion"]).to eq("apps/v1")
+        expect(parsed["kind"]).to eq("Deployment")
+      end
+    end
+  end
+
+  describe "Deployment schema validation against real Kubernetes YAML" do
+    let(:klass) { Kube::Schema["Deployment"] }
+
+    let(:incomplete_deployment) do
+      klass.new {
+        metadata.namespace = "example"
+        metadata.name = "example-deployment"
+        spec.replicas = 1
+        spec.template.spec.containers = [
+          { name: "app", image: "ruby:latest" }
+        ]
       }
     end
 
-    let(:klass) do
-      allow(Kube::Schema::SchemaCache).to receive(:read).and_return(JSON.generate(schema_with_defaults))
-      Kube::Schema["Deployment"]
+    it "rejects an incomplete Deployment missing selector" do
+      expect(incomplete_deployment.valid?).to be false
     end
 
-    it "inserts default values into the data on initialization" do
-      resource = klass.new({})
-      expect(resource.to_h).to include(replicas: 1, paused: false)
+    it "reports specific validation errors for incomplete Deployment" do
+      expect { incomplete_deployment.valid! }.to raise_error(Kube::ValidationError) do |error|
+        expect(error.message).to include("spec.selector is required but missing")
+      end
     end
 
-    it "does not override explicitly provided values" do
-      resource = klass.new("replicas" => 3, "paused" => true)
-      expect(resource.to_h).to include(replicas: 3, paused: true)
+    it "refuses to serialize an incomplete Deployment to YAML" do
+      expect { incomplete_deployment.to_yaml }.to raise_error(Kube::ValidationError)
     end
 
-    it "merges defaults with provided values" do
-      resource = klass.new("name" => "my-deploy")
-      expect(resource.to_h).to include(name: "my-deploy", replicas: 1, paused: false)
+    it "has apiVersion and kind from defaults even when incomplete" do
+      h = incomplete_deployment.to_h
+      expect(h[:apiVersion]).to eq("apps/v1")
+      expect(h[:kind]).to eq("Deployment")
     end
   end
 
   describe "instantiation via Instance lookup" do
     let(:klass) { Kube::Schema["Deployment"] }
 
-    it "returns a Resource instance from .new with a hash" do
-      resource = klass.new({})
+    it "returns a Resource instance from .new" do
+      resource = klass.new
       expect(resource).to be_a(described_class)
     end
 
     it "supports block-based initialization" do
-      resource = klass.new({}) do
-        self.type = "custom"
-      end
-      expect(resource.to_h).to include(type: "custom")
+      resource = klass.new {
+        metadata.name = "web"
+        metadata.namespace = "prod"
+      }
+      expect(resource.to_h[:metadata][:name]).to eq("web")
+      expect(resource.to_h[:metadata][:namespace]).to eq("prod")
     end
 
     it "has a schema attached to the class" do
-      expect(klass.schema).to be_a(Hash)
-      expect(klass.schema).to have_key("properties")
+      expect(klass.schema).not_to be_nil
+    end
+
+    it "has defaults attached to the class" do
+      expect(klass.defaults).not_to be_nil
+      expect(klass.defaults["apiVersion"]).to eq("apps/v1")
+      expect(klass.defaults["kind"]).to eq("Deployment")
     end
   end
 end

@@ -4,8 +4,7 @@ require_relative '../kube/errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/instance'
-require_relative 'schema/schema_cache'
-require_relative 'schema/schema_index'
+require_relative 'schema/manifest'
 
 module Kube
   def self.schema
@@ -18,33 +17,30 @@ module Kube
     @instances = {}
 
     GEM_ROOT = File.expand_path("../..", __dir__).freeze
-    SCHEMA_INDEX = File.join(GEM_ROOT, "data").freeze
-    DEFAULT_VERSION = "1.34.4" # 2025-04-16
+    SCHEMAS_DIR = File.join(GEM_ROOT, "schemas").freeze
+    DEFAULT_VERSION = "1.34"
 
     class << self
       # Set a default Kubernetes version for bare lookups like Kube::Schema["Deployment"].
-      # When nil, the latest version found in the schemas directory is used.
+      # When nil, the DEFAULT_VERSION is used.
       attr_accessor :schema_version
 
-      # Kube::Schema["1.33.6"]       => cached Instance (supports ["Deployment"] chaining)
-      # Kube::Schema["Deployment"]   => Resource via the default version
-      # Kube::Schema["apps/v1/Deployment"] => Resource via the default version
+      # Kube::Schema["1.34"]           => cached Instance (supports ["Deployment"] chaining)
+      # Kube::Schema["Deployment"]     => Resource via the default version
       def [](key)
-        is_a_version = -> (key) { Gem::Version.correct?(key) }
-
         if key.start_with?("v") && Gem::Version.correct?(key.sub("v", ""))
           raise Kube::IncorrectVersionFormat,
             "\nDon't preface the version with a \"v\"." \
             "\nUse Kube::Schema[\"#{key.sub("v", "")}\"] instead."
         end
 
-        if is_a_version.(key)
+        if Gem::Version.correct?(key)
           if has_version?(key)
             @instances[key] ||= Instance.new(key)
           else
             raise Kube::UnknownVersionError.new(
               "\n#{key} is an unknown version..." +
-              "\nUse `Kube::Schema.schema_versions` to get a list."
+              "\nAvailable: #{schema_versions.join(", ")}"
             )
           end
         else
@@ -58,15 +54,17 @@ module Kube
         raise NotImplementedError
       end
 
+      # Available Kubernetes versions, read from the local schemas directory.
+      #
+      # @return [Array<String>] sorted version strings like ["1.19", "1.20", ...]
       def schema_versions
         @schema_versions ||=
-          Dir.glob(SCHEMA_INDEX + "/v*.txt").map do |file_path|
-            file_path.split("/").last.gsub(".txt", "")[1..-1]
+          Dir.glob(File.join(SCHEMAS_DIR, "v*.json")).map do |file_path|
+            File.basename(file_path, ".json").sub(/\Av/, "")
           end.sort_by { Gem::Version.new(_1) }
       end
 
-      # The latest Kubernetes version available in the schemas directory,
-      # determined by sorting the filenames with Gem::Version.
+      # The latest Kubernetes version available in the schemas directory.
       def latest_version
         schema_versions.last
       end
