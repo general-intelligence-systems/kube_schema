@@ -32,18 +32,21 @@ RSpec.describe Kube::Schema::Resource do
 
   describe "#initialize" do
     it "accepts a hash" do
-      resource = described_class.new("name" => "my-deploy", "kind" => "Deployment")
-      expect(resource.to_h).to include(name: "my-deploy", kind: "Deployment")
+      klass = Kube::Schema["Deployment"]
+      resource = klass.new("metadata" => { "name" => "my-deploy" })
+      expect(resource.to_h).to include(kind: "Deployment")
+      expect(resource.to_h[:metadata][:name]).to eq("my-deploy")
     end
 
     it "creates an empty resource when no arguments are given" do
-      resource = described_class.new
-      expect(resource.to_h).to eq({})
+      klass = Kube::Schema["Deployment"]
+      resource = klass.new
+      expect(resource.to_h).to include(apiVersion: "apps/v1", kind: "Deployment")
     end
 
     it "accepts a block for DSL-style initialization" do
-      resource = described_class.new {
-        self.kind = "Deployment"
+      klass = Kube::Schema["Deployment"]
+      resource = klass.new {
         metadata.name = "test"
       }
       expect(resource.to_h).to include(kind: "Deployment")
@@ -82,19 +85,19 @@ RSpec.describe Kube::Schema::Resource do
 
   describe "#==" do
     it "considers two resources equal when their data matches" do
-      a = described_class.new("kind" => "Pod")
-      b = described_class.new("kind" => "Pod")
+      a = Kube::Schema["Pod"].new
+      b = Kube::Schema["Pod"].new
       expect(a).to eq(b)
     end
 
     it "considers two resources unequal when their data differs" do
-      a = described_class.new("kind" => "Pod")
-      b = described_class.new("kind" => "Service")
+      a = Kube::Schema["Pod"].new
+      b = Kube::Schema["Service"].new
       expect(a).not_to eq(b)
     end
 
     it "is not equal to non-Resource objects" do
-      resource = described_class.new("kind" => "Pod")
+      resource = Kube::Schema["Pod"].new
       expect(resource).not_to eq({ "kind" => "Pod" })
     end
   end
@@ -217,8 +220,8 @@ RSpec.describe Kube::Schema::Resource do
   end
 
   describe "#to_yaml" do
-    it "returns clean Kubernetes YAML on the base class" do
-      resource = described_class.new("kind" => "Pod", "apiVersion" => "v1")
+    it "returns clean Kubernetes YAML" do
+      resource = Kube::Schema["Pod"].new
       yaml = resource.to_yaml
 
       expect(yaml).to include("kind: Pod")
@@ -228,7 +231,7 @@ RSpec.describe Kube::Schema::Resource do
     end
 
     it "uses string keys, not symbol keys" do
-      resource = described_class.new("kind" => "Pod")
+      resource = Kube::Schema["Pod"].new
       yaml = resource.to_yaml
 
       expect(yaml).not_to match(/:\w+:/)
@@ -236,7 +239,7 @@ RSpec.describe Kube::Schema::Resource do
     end
 
     it "produces parseable YAML that round-trips" do
-      resource = described_class.new("kind" => "Pod", "apiVersion" => "v1")
+      resource = Kube::Schema["Pod"].new
       parsed = YAML.safe_load(resource.to_yaml)
 
       expect(parsed).to be_a(Hash)

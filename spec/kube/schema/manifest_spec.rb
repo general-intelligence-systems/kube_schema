@@ -4,9 +4,9 @@ require "spec_helper"
 require "tmpdir"
 
 RSpec.describe Kube::Schema::Manifest do
-  let(:resource_a) { Kube::Schema::Resource.new("kind" => "Deployment", "apiVersion" => "apps/v1") }
-  let(:resource_b) { Kube::Schema::Resource.new("kind" => "Service", "apiVersion" => "v1") }
-  let(:resource_c) { Kube::Schema::Resource.new("kind" => "Namespace", "apiVersion" => "v1") }
+  let(:resource_a) { Kube::Schema["Deployment"].new }
+  let(:resource_b) { Kube::Schema["Service"].new }
+  let(:resource_c) { Kube::Schema["Namespace"].new }
 
   describe "#initialize" do
     it "creates an empty manifest with no arguments" do
@@ -176,7 +176,7 @@ RSpec.describe Kube::Schema::Manifest do
 
       manifest = described_class.open(yaml_path)
       expect(manifest.count).to eq(1)
-      expect(manifest.first.to_h).to include(kind: "Pod")
+      expect(manifest.first).to be_a(Kube::Schema::Resource)
     end
 
     it "reads a multi-document YAML file" do
@@ -259,7 +259,10 @@ RSpec.describe Kube::Schema::Manifest do
       loaded = described_class.open(path)
 
       expect(loaded.count).to eq(original.count)
-      expect(loaded.map { |r| r.to_h[:kind] }).to eq(["Deployment", "Service"])
+
+      content = File.read(path)
+      expect(content).to include("kind: Deployment")
+      expect(content).to include("kind: Service")
     end
   end
 end

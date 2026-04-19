@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../monkey_patches'
-require_relative '../kube/errors'
+require_relative 'monkey_patches'
+require_relative 'errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/instance'
@@ -45,7 +45,9 @@ module Kube
             )
           end
         else
-          Instance.new(schema_version || DEFAULT_VERSION)[key]
+          version = schema_version || DEFAULT_VERSION
+          @instances[version] ||= Instance.new(version)
+          @instances[version][key]
         end
       end
 

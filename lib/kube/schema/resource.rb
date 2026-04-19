@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "black_hole_struct"
-
 module Kube
   module Schema
     class Resource
@@ -9,13 +7,16 @@ module Kube
       def initialize(hash = {}, &block)
         deep_symbolize_keys(self.class.defaults.to_h).then do |defaults|
 
+          # You are NEVER allowed to change `apiVersion` or `kind`
+          # Therefore, they are ONLY ever set from the self.defaults
+          # property.
           deep_symbolize_keys(hash).then do |symbolized|
             config = defaults.merge({
-              metadata: symbolized.delete(:metadata),
-              spec: symbolized.delete(:spec),
+              metadata: symbolized.delete(:metadata) || {},
+              spec: symbolized.delete(:spec) || {},
             })
 
-            @data = BlackHoleStruct.new(config)
+            @data = config
           end
         end
 
@@ -68,7 +69,7 @@ module Kube
       # they are facts derived from the GVK metadata.
       def to_h
         defaults = self.class.defaults
-        data = @data.to_h
+        data = @data.reject { |_, v| v.is_a?(Hash) && v.empty? }
 
         if defaults
           symbolized = deep_symbolize_keys(defaults)
