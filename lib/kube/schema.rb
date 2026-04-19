@@ -75,3 +75,51 @@ module Kube
     end
   end
 end
+
+# Patch BlackHoleStruct to handle arrays consistently.
+#
+# The upstream gem does not recurse into arrays — hashes inside arrays
+# are not converted to BlackHoleStruct on construction, and are not
+# converted back to plain Hash on #to_h.  This causes key-type
+# inconsistencies after a Resource round-trip (symbol keys become
+# string keys inside arrays).
+#
+# These two patches fix both directions:
+#   initialize — converts hashes inside arrays to BlackHoleStruct
+#   to_h       — converts BlackHoleStruct/arrays back to plain objects
+class BlackHoleStruct
+  def initialize(hash = {})
+    raise ArgumentError, "Argument should be a Hash" unless hash.is_a?(Hash)
+
+    @table = {}
+    hash.each do |key, value|
+      @table[key.to_sym] = deep_wrap(value)
+    end
+  end
+
+  def to_h
+    hash = {}
+    @table.each do |key, value|
+      hash[key] = deep_unwrap(value)
+    end
+    hash
+  end
+
+  private
+
+  def deep_wrap(value)
+    case value
+    when Hash  then self.class.new(value)
+    when Array then value.map { |v| deep_wrap(v) }
+    else       value
+    end
+  end
+
+  def deep_unwrap(value)
+    case value
+    when self.class then value.to_h
+    when Array      then value.map { |v| deep_unwrap(v) }
+    else            value
+    end
+  end
+end
