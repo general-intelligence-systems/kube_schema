@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../monkey_patches'
 require_relative '../kube/errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
