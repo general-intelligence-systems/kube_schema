@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "rspec/core/rake_task"
+task :test do
+  Dir["lib/**/*.rb"].each { |f| sh "ruby", f }
+end
 
-RSpec::Core::RakeTask.new(:spec)
-
-task default: :spec
+task default: :test

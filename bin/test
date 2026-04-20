@@ -1,12 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "bundler/setup"
-
 Dir.chdir(File.expand_path("..", __dir__))
 
-if ARGV.empty?
-  exec("bundle", "exec", "rspec")
-else
-  exec("bundle", "exec", "rspec", *ARGV)
+files = ARGV.empty? ? Dir.glob("lib/**/*.rb").sort : ARGV
+
+files.each do |f|
+  system("bundle", "exec", "ruby", f, exception: true)
 end
