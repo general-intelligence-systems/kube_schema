@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#
+# Downloads the vCluster Platform (Loft) OpenAPI swagger spec from GitHub
+# and extracts all loft.sh API group definitions with transitive $ref resolution.
+#
+# This is needed because management.loft.sh types are served via an aggregated
+# API server (not regular CRDs), so they can't be extracted by applying CRD
+# YAMLs to k3s like bin/04-get-crd-json does.
+#
+# Output: data/crds/07-loft-definitions.json
+#
+
+set -euo pipefail
+
+SWAGGER_URL="https://raw.githubusercontent.com/loft-sh/loft/master/api/openapi-spec/swagger.json"
+SWAGGER_FILE="data/crds/06-loft-full-swagger.json"
+OUTPUT_FILE="data/crds/07-loft-definitions.json"
+
+mkdir -p data/crds
+
+echo "Downloading loft swagger.json..."
+curl -fsSL "$SWAGGER_URL" -o "$SWAGGER_FILE"
+
+echo "Extracting loft.sh definitions with transitive \$ref resolution..."
+
+# Pass 1: Extract seed definition keys (those with loft.sh GVK annotations)
+echo "  Pass 1: Finding seed definitions..."
+jq -r '
+  [.definitions | to_entries[]
+    | select(.value["x-kubernetes-group-version-kind"]
+        | if . then any(.[]; .group | test("\\.loft\\.sh$")) else false end)
+    | .key
+  ] | .[]
+' "$SWAGGER_FILE" > data/crds/06-loft-seed-keys.txt
+
+SEED_COUNT=$(wc -l < data/crds/06-loft-seed-keys.txt)
+echo "  Found $SEED_COUNT seed definitions"
+
+# Pass 2: Iteratively resolve $ref dependencies
+echo "  Pass 2: Resolving transitive \$ref dependencies..."
+cp data/crds/06-loft-seed-keys.txt data/crds/06-loft-all-keys.txt
+
+while true; do
+  # Find all $ref targets from current set of definitions
+  jq --rawfile keys data/crds/06-loft-all-keys.txt -r '
+    ($keys | split("\n") | map(select(length > 0))) as $current |
+    ($current | map({(.): true}) | add) as $set |
+    [ $current[] as $key |
+      .definitions[$key] // empty |
+      [recurse | strings | select(startswith("#/definitions/"))] |
+      map(ltrimstr("#/definitions/")) | .[]
+    ] | unique | map(select(. as $k | $set[$k] | not)) | .[]
+  ' "$SWAGGER_FILE" > data/crds/06-loft-new-keys.txt
+
+  NEW_COUNT=$(wc -l < data/crds/06-loft-new-keys.txt)
+  if [ "$NEW_COUNT" -eq 0 ]; then
+    break
+  fi
+
+  echo "    Found $NEW_COUNT new referenced definitions"
+  cat data/crds/06-loft-new-keys.txt >> data/crds/06-loft-all-keys.txt
+done
+
+TOTAL_COUNT=$(wc -l < data/crds/06-loft-all-keys.txt)
+echo "  Total: $TOTAL_COUNT definitions (seeds + transitive deps)"
+
+# Pass 3: Extract all collected definitions into the output file
+echo "  Pass 3: Extracting definitions to $OUTPUT_FILE..."
+jq --rawfile keys data/crds/06-loft-all-keys.txt '
+  ($keys | split("\n") | map(select(length > 0))) as $k |
+  .definitions | with_entries(select(IN($k[]; .key)))
+' "$SWAGGER_FILE" > "$OUTPUT_FILE"
+
+# Clean up intermediate files
+rm -f data/crds/06-loft-seed-keys.txt data/crds/06-loft-new-keys.txt data/crds/06-loft-all-keys.txt
+rm -f "$SWAGGER_FILE"
+
+OUTPUT_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
+echo "Done. Output: $OUTPUT_FILE ($OUTPUT_SIZE)"

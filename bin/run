@@ -3,3 +3,4 @@
 bin/01-download
 bin/03-download-crds
 bin/04-get-crd-json
+bin/05-download-loft-schemas
