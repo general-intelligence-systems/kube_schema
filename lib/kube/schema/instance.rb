@@ -39,44 +39,47 @@ module Kube
 
       # Look up a resource by kind (e.g. "Deployment", "NetworkPolicy").
       # Returns a class that inherits from Kube::Schema::Resource.
+      #
+      # Custom schemas registered via Kube::Schema.register take precedence
+      # over built-in definitions, allowing users to override or extend the
+      # schema for any kind.
       def [](kind)
         @resource_classes[kind] ||= begin
-          entry = find_gvk_entry(kind)
+          # Custom schemas win over built-in definitions.
+          custom = find_custom_entry(kind)
+          if custom
+            build_resource_class(custom[:schema], custom[:defaults])
+          else
+            entry = find_gvk_entry(kind)
 
-          if entry.nil?
-            raise "No resource schema found for #{kind}!" \
-              "\nUse #list_resources to see available kinds for v#{version}."
-          end
-
-          ref_schema = schemer.ref("#/definitions/#{entry[:definition_key]}")
-          defaults = entry[:defaults].freeze
-
-          Class.new(::Kube::Schema::Resource) do
-            @schema = ref_schema
-            @defaults = defaults
-
-            def self.schema
-              @schema || superclass.schema
+            if entry.nil?
+              raise "No resource schema found for #{kind}!" \
+                "\nUse #list_resources to see available kinds for v#{version}."
             end
 
-            def self.defaults
-              @defaults || superclass.defaults
-            end
+            ref_schema = schemer.ref("#/definitions/#{entry[:definition_key]}")
+            build_resource_class(ref_schema, entry[:defaults].freeze)
           end
         end
       end
 
-      # All available resource kinds for this version.
+      # All available resource kinds for this version, including any
+      # custom schemas registered via Kube::Schema.register.
       #
       # @return [Array<String>] sorted kind names
       def list_resources
-        gvk_index.keys.sort
+        (gvk_index.keys + Schema.custom_schemas.keys).uniq.sort
       end
 
       private
 
         # The JSONSchemer instance for this version's Swagger document.
         # Cached at the class level so it's built once per version.
+        #
+        # After loading the base Swagger JSON, merges in any extra definition
+        # files found in the schemas directory (e.g. crd-definitions.json,
+        # loft-definitions.json). These files are flat JSON objects where keys
+        # are definition names and values are OpenAPI v2 schema objects.
         def schemer
           self.class.schemers[@version] ||= begin
             path = File.join(SCHEMAS_DIR, "v#{version}.json")
@@ -87,7 +90,18 @@ module Kube
                 "\nUse `Kube::Schema.schema_versions` to get a list."
             end
 
-            JSONSchemer.schema(JSON.parse(File.read(path)))
+            schema = JSON.parse(File.read(path))
+
+            # Merge extra definition files (*-definitions.json) into the
+            # base schema so CRD and aggregated-API types (e.g. loft,
+            # gateway-api) are available alongside built-in k8s types.
+            Dir.glob(File.join(SCHEMAS_DIR, "*-definitions.json")).each do |defs_path|
+              extra = JSON.parse(File.read(defs_path))
+              schema["definitions"] ||= {}
+              schema["definitions"].merge!(extra)
+            end
+
+            JSONSchemer.schema(schema)
           end
         end
 
@@ -150,6 +164,41 @@ module Kube
           end
 
           nil
+        end
+
+        # Find a custom schema entry by kind (case-insensitive).
+        # Returns the { schema:, defaults: } hash or nil.
+        def find_custom_entry(kind)
+          registry = Schema.custom_schemas
+          return registry[kind] if registry.key?(kind)
+
+          registry.each do |k, v|
+            return v if k.downcase == kind.downcase
+          end
+
+          nil
+        end
+
+        # Build a Resource subclass from a JSONSchemer instance and defaults hash.
+        def build_resource_class(schema_instance, defaults)
+          Class.new(::Kube::Schema::Resource) do
+            @schema = schema_instance
+            @defaults = defaults
+
+            def self.schema
+              @schema || superclass.schema
+            end
+
+            def self.defaults
+              @defaults || superclass.defaults
+            end
+          end
+        end
+
+        # Called by Kube::Schema.register and reset_custom_schemas! to
+        # invalidate cached resource classes so new registrations take effect.
+        def clear_resource_cache!
+          @resource_classes.clear
         end
     end
   end

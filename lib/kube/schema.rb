@@ -16,6 +16,7 @@ module Kube
 
     @schema_version = nil
     @instances = {}
+    @custom_schemas = {}
 
     GEM_ROOT = File.expand_path("../..", __dir__).freeze
     SCHEMAS_DIR = File.join(GEM_ROOT, "schemas").freeze
@@ -25,6 +26,71 @@ module Kube
       # Set a default Kubernetes version for bare lookups like Kube::Schema["Deployment"].
       # When nil, the DEFAULT_VERSION is used.
       attr_accessor :schema_version
+
+      # Custom schemas registered via Kube::Schema.register.
+      # Keys are kind strings, values are { schema:, defaults: } hashes.
+      attr_reader :custom_schemas
+
+      # Register a standalone JSON Schema for a custom resource kind.
+      #
+      # This lets users add CRD schemas from any source — for example,
+      # the datreeio/CRDs-catalog, operator repos, or their own CRDs.
+      # Registered kinds take precedence over built-in definitions.
+      #
+      # @param kind [String] The Kubernetes Kind (e.g. "Certificate")
+      # @param schema [Hash, String, Pathname] JSON Schema as a Hash,
+      #   a JSON string, or a file path to a .json file
+      # @param api_version [String] The apiVersion (e.g. "cert-manager.io/v1")
+      #
+      # @example Register from a local file
+      #   Kube::Schema.register("Certificate",
+      #     schema: "schemas/cert-manager.io/certificate_v1.json",
+      #     api_version: "cert-manager.io/v1"
+      #   )
+      #
+      # @example Register from a Hash
+      #   Kube::Schema.register("MyResource",
+      #     schema: { "type" => "object", "properties" => { ... } },
+      #     api_version: "example.com/v1"
+      #   )
+      #
+      def register(kind, schema:, api_version:)
+        require "json"
+        require "json_schemer"
+
+        parsed = case schema
+          when Hash
+            schema
+          when String, Pathname
+            path = schema.to_s
+            if File.exist?(path)
+              JSON.parse(File.read(path))
+            else
+              JSON.parse(path)
+            end
+          else
+            raise ArgumentError,
+              "schema must be a Hash, a JSON string, or a file path — got #{schema.class}"
+          end
+
+        @custom_schemas[kind] = {
+          schema: JSONSchemer.schema(parsed),
+          defaults: { "apiVersion" => api_version, "kind" => kind }.freeze
+        }
+
+        # Invalidate cached resource classes on all instances so the
+        # new registration takes effect immediately.
+        @instances.each_value { |inst| inst.send(:clear_resource_cache!) }
+
+        kind
+      end
+
+      # Remove all custom schema registrations.
+      # Useful for test teardown or resetting state.
+      def reset_custom_schemas!
+        @custom_schemas.clear
+        @instances.each_value { |inst| inst.send(:clear_resource_cache!) }
+      end
 
       # Kube::Schema["1.34"]           => cached Instance (supports ["Deployment"] chaining)
       # Kube::Schema["Deployment"]     => Resource via the default version
