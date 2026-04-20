@@ -76,7 +76,8 @@ module Kube
       # they are facts derived from the GVK metadata.
       def to_h
         defaults = self.class.defaults
-        data = @data.reject { |_, v| v.is_a?(Hash) && v.empty? }
+        data = deep_compact(@data)
+        data = data.reject { |_, v| v.is_a?(Hash) && v.empty? }
 
         if defaults
           symbolized = deep_symbolize_keys(defaults)
@@ -101,6 +102,20 @@ module Kube
       end
 
       private
+
+        def deep_compact(obj)
+          case obj
+          when Hash
+            obj.each_with_object({}) do |(k, v), result|
+              compacted = deep_compact(v)
+              result[k] = compacted unless compacted.nil?
+            end
+          when Array
+            obj.map { |v| deep_compact(v) }
+          else
+            obj
+          end
+        end
 
         def deep_stringify_keys(obj)
           case obj

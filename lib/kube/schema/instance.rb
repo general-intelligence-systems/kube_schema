@@ -101,6 +101,14 @@ module Kube
               schema["definitions"].merge!(extra)
             end
 
+            # Kubernetes OpenAPI v2 defines IntOrString as "type": "string"
+            # with "format": "int-or-string". This is a limitation of
+            # OpenAPI v2 which cannot express union types. Patch the
+            # definition so JSONSchemer accepts both integers and strings.
+            if (int_or_str = schema.dig("definitions", "io.k8s.apimachinery.pkg.util.intstr.IntOrString"))
+              int_or_str["type"] = ["string", "integer"]
+            end
+
             JSONSchemer.schema(schema)
           end
         end
