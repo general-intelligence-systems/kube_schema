@@ -89,8 +89,49 @@ RSpec.describe Kube::Schema do
   end
 
   describe ".parse" do
-    it "raises NotImplementedError" do
-      expect { Kube::Schema.parse({}) }.to raise_error(NotImplementedError)
+    it "returns a typed Resource for a known kind" do
+      resource = Kube::Schema.parse("kind" => "Deployment", "apiVersion" => "apps/v1")
+      expect(resource).to be_a(Kube::Schema::Resource)
+      expect(resource.kind).to eq("Deployment")
+      expect(resource.apiVersion).to eq("apps/v1")
+    end
+
+    it "works with symbol keys" do
+      resource = Kube::Schema.parse(kind: "Pod", apiVersion: "v1", metadata: { name: "web" })
+      expect(resource).to be_a(Kube::Schema::Resource)
+      expect(resource.kind).to eq("Pod")
+      expect(resource.metadata.name).to eq("web")
+    end
+
+    it "returns a class backed by the correct schema" do
+      resource = Kube::Schema.parse("kind" => "Service", "apiVersion" => "v1")
+      expect(resource.class.schema).not_to be_nil
+      expect(resource.class.defaults).to eq({ "apiVersion" => "v1", "kind" => "Service" })
+    end
+
+    it "round-trips through to_h" do
+      original = Kube::Schema["Deployment"].new {
+        metadata.name = "web"
+        spec.replicas = 3
+        spec.selector.matchLabels = { app: "web" }
+        spec.template.metadata.labels = { app: "web" }
+        spec.template.spec.containers = [{ name: "web", image: "nginx" }]
+      }
+      parsed = Kube::Schema.parse(original.to_h)
+      expect(parsed.kind).to eq("Deployment")
+      expect(parsed.metadata.name).to eq("web")
+    end
+
+    it "raises ArgumentError for a non-Hash" do
+      expect { Kube::Schema.parse("not a hash") }.to raise_error(ArgumentError, /Expected a Hash/)
+    end
+
+    it "raises ArgumentError when kind is missing" do
+      expect { Kube::Schema.parse("apiVersion" => "v1") }.to raise_error(ArgumentError, /kind/)
+    end
+
+    it "raises RuntimeError for an unknown kind" do
+      expect { Kube::Schema.parse("kind" => "BogusKind", "apiVersion" => "v1") }.to raise_error(RuntimeError)
     end
   end
 

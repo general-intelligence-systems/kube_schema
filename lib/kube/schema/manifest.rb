@@ -90,8 +90,32 @@ module Kube
       # File I/O
       # -------------------------------------------------------------------
 
+      # Parse a YAML string containing one or more Kubernetes resource
+      # documents and return a Manifest populated with typed Resource objects.
+      #
+      # Each document's "kind" is resolved via Kube::Schema.parse to
+      # produce the correct Resource subclass (e.g. Deployment, Service).
+      # Documents without a recognized "kind" fall back to a bare Resource.
+      #
+      #   yaml = `helm template my-release bitnami/nginx`
+      #   manifest = Kube::Schema::Manifest.parse(yaml)
+      #   manifest.first.class  #=> Kube::Schema::Resource (Deployment subclass)
+      #
+      # @param yaml_string [String] multi-document YAML
+      # @return [Manifest]
+      def self.parse(yaml_string)
+        docs = if YAML.respond_to?(:safe_load_stream)
+                 YAML.safe_load_stream(yaml_string, permitted_classes: [Symbol])
+               else
+                 YAML.load_stream(yaml_string)
+               end
+
+        resources = docs.compact.map { |doc| parse_doc(doc) }
+        new(*resources)
+      end
+
       # Read a YAML file containing one or more Kubernetes resource documents
-      # and return a Manifest populated with Resource objects.
+      # and return a Manifest populated with typed Resource objects.
       #
       #   manifest = Kube::Schema::Manifest.open("deploy.yaml")
       #   manifest.count  #=> 3
@@ -108,7 +132,7 @@ module Kube
                  YAML.load_stream(contents)
                end
 
-        resources = docs.compact.map { |doc| Resource.new(doc) }
+        resources = docs.compact.map { |doc| parse_doc(doc) }
         new(*resources, filename: path)
       end
 
@@ -126,6 +150,16 @@ module Kube
         @filename = path
         path
       end
+
+      # Parse a single YAML document hash into a typed Resource.
+      #
+      # @param doc [Hash] a parsed YAML document
+      # @return [Resource]
+      # @raise [RuntimeError] if the kind is not recognized
+      def self.parse_doc(doc)
+        Kube::Schema.parse(doc)
+      end
+      private_class_method :parse_doc
 
       private
 

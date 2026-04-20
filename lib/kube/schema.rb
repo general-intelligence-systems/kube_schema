@@ -48,11 +48,11 @@ module Kube
       #     api_version: "cert-manager.io/v1"
       #   )
       #
-      # @example Register from a Hash
-      #   Kube::Schema.register("MyResource",
-      #     schema: { "type" => "object", "properties" => { ... } },
-      #     api_version: "example.com/v1"
-      #   )
+      # @example Register from Chart#crds
+      #   chart.crds.each do |crd|
+      #     s = crd.to_json_schema
+      #     Kube::Schema.register(s[:kind], schema: s[:schema], api_version: s[:api_version])
+      #   end
       #
       def register(kind, schema:, api_version:)
         require "json"
@@ -117,10 +117,26 @@ module Kube
         end
       end
 
-      # Build a Resource from a hash.
-      #   Kube::Schema.parse(Kube::Schema["Deployment"].to_h) == Kube::Schema["Deployment"]
+      # Build a typed Resource from a raw hash.
+      #
+      # Looks up the "kind" key in the hash and resolves it to the
+      # correct Resource subclass via the schema registry. The hash
+      # may use string or symbol keys.
+      #
+      #   Kube::Schema.parse("kind" => "Deployment", "apiVersion" => "apps/v1")
+      #   Kube::Schema.parse(kind: "Pod", apiVersion: "v1", metadata: { name: "web" })
+      #
+      # @param hash [Hash] a Kubernetes resource hash with at least a "kind" key
+      # @return [Resource] a schema-validated Resource instance
+      # @raise [ArgumentError] if the hash is nil, not a Hash, or missing "kind"
       def parse(hash)
-        raise NotImplementedError
+        raise ArgumentError, "Expected a Hash, got #{hash.class}" unless hash.is_a?(Hash)
+
+        kind = hash["kind"] || hash[:kind]
+        raise ArgumentError, "Hash must contain a \"kind\" key" if kind.nil?
+
+        resource_class = self[kind]
+        resource_class.new(hash)
       end
 
       # Available Kubernetes versions, read from the local schemas directory.

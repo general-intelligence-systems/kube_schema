@@ -11,12 +11,16 @@ module Kube
           # Therefore, they are ONLY ever set from the self.defaults
           # property.
           deep_symbolize_keys(hash).then do |symbolized|
-            config = defaults.merge({
-              metadata: symbolized.delete(:metadata) || {},
-              spec: symbolized.delete(:spec) || {},
-            })
+            @data = defaults
 
-            @data = config
+            # This is extracting "top-level" properties from the input hash
+            # such as [apiVersion, spec, metadata, roleRef, ...]
+            # We then ignore the rest of the attributes by design.
+            self.class.schema_properties.each do |property|
+              if symbolized.key?(property)
+                @data[property] = symbolized.delete(property)
+              end
+            end
           end
         end
 
@@ -25,17 +29,20 @@ module Kube
         end
       end
 
-      def apiVersion = @data.apiVersion
-      def kind       = @data.kind
-      def spec       = @data.spec
-      def metadata   = @data.metadata
-
       # Gets overridden by the factory in Kube::Schema::Instance
-      def self.schema = nil
+      def self.schema
+        raise "Kube::Schema::Resource should NOT be instanciated directly"
+      end
+
+      def self.schema_properties
+        raise "Kube::Schema::Resource should NOT be instanciated directly"
+      end
 
       # Gets overridden by the factory in Kube::Schema::Instance.
       # Returns a frozen Hash like { "apiVersion" => "apps/v1", "kind" => "Deployment" }
-      def self.defaults = nil
+      def self.defaults
+        raise "Kube::Schema::Resource should NOT be instanciated directly"
+      end
 
       def valid?
         if self.class.schema.nil?

@@ -3,17 +3,7 @@
 require "spec_helper"
 
 RSpec.describe Kube::Schema::Resource do
-  describe ".schema" do
-    it "returns nil on the base class" do
-      expect(described_class.schema).to be_nil
-    end
-  end
-
   describe ".defaults" do
-    it "returns nil on the base class" do
-      expect(described_class.defaults).to be_nil
-    end
-
     it "returns apiVersion and kind for a schema-bearing subclass" do
       klass = Kube::Schema["Deployment"]
       expect(klass.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
@@ -55,11 +45,6 @@ RSpec.describe Kube::Schema::Resource do
   end
 
   describe "#to_h" do
-    it "returns a hash representation" do
-      resource = described_class.new("a" => 1)
-      expect(resource.to_h).to be_a(Hash)
-    end
-
     context "with a schema-bearing subclass" do
       let(:klass) { Kube::Schema["Deployment"] }
 
@@ -103,11 +88,6 @@ RSpec.describe Kube::Schema::Resource do
   end
 
   describe "#valid?" do
-    it "returns true on the base class (no schema)" do
-      resource = described_class.new("anything" => "goes")
-      expect(resource.valid?).to be true
-    end
-
     context "with a schema-bearing subclass" do
       let(:klass) { Kube::Schema["Deployment"] }
 
@@ -126,11 +106,6 @@ RSpec.describe Kube::Schema::Resource do
   end
 
   describe "#valid!" do
-    it "returns true on the base class (no schema)" do
-      resource = described_class.new("anything" => "goes")
-      expect(resource.valid!).to be true
-    end
-
     context "with a schema-bearing subclass" do
       let(:klass) { Kube::Schema["Deployment"] }
 

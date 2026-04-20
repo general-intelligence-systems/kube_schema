@@ -165,6 +165,58 @@ RSpec.describe Kube::Schema::Manifest do
     end
   end
 
+  describe ".parse" do
+    it "parses a single-document YAML string" do
+      yaml = { "kind" => "Pod", "apiVersion" => "v1", "metadata" => { "name" => "test" } }.to_yaml
+      manifest = described_class.parse(yaml)
+
+      expect(manifest.count).to eq(1)
+      expect(manifest.first).to be_a(Kube::Schema::Resource)
+      expect(manifest.first.kind).to eq("Pod")
+    end
+
+    it "parses a multi-document YAML string" do
+      yaml = [
+        { "kind" => "Deployment", "apiVersion" => "apps/v1" },
+        { "kind" => "Service", "apiVersion" => "v1" }
+      ].map(&:to_yaml).join("")
+
+      manifest = described_class.parse(yaml)
+      expect(manifest.count).to eq(2)
+    end
+
+    it "returns typed Resource subclasses" do
+      yaml = { "kind" => "Deployment", "apiVersion" => "apps/v1", "metadata" => { "name" => "web" } }.to_yaml
+      manifest = described_class.parse(yaml)
+
+      resource = manifest.first
+      expect(resource.class.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
+      expect(resource.kind).to eq("Deployment")
+    end
+
+    it "skips nil documents (empty YAML docs)" do
+      yaml = "---\nkind: Pod\napiVersion: v1\n---\n---\nkind: Service\napiVersion: v1\n"
+      manifest = described_class.parse(yaml)
+      expect(manifest.count).to eq(2)
+    end
+
+    it "raises for unknown kinds" do
+      yaml = { "kind" => "UnknownCRD", "apiVersion" => "custom.io/v1" }.to_yaml
+      expect { described_class.parse(yaml) }.to raise_error(RuntimeError)
+    end
+
+    it "does not set a filename" do
+      yaml = { "kind" => "Pod", "apiVersion" => "v1" }.to_yaml
+      manifest = described_class.parse(yaml)
+      expect(manifest.filename).to be_nil
+    end
+
+    it "returns an empty manifest for empty YAML" do
+      manifest = described_class.parse("---\n")
+      expect(manifest.count).to eq(0)
+    end
+  end
+
   describe ".open" do
     let(:tmpdir) { Dir.mktmpdir("manifest_test") }
     let(:yaml_path) { File.join(tmpdir, "resources.yaml") }

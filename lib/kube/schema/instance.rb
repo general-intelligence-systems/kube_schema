@@ -184,6 +184,7 @@ module Kube
           Class.new(::Kube::Schema::Resource) do
             @schema = schema_instance
             @defaults = defaults
+            @schema_properties = @schema.value["properties"].keys.map(&:to_sym)
 
             def self.schema
               @schema || superclass.schema
@@ -191,6 +192,16 @@ module Kube
 
             def self.defaults
               @defaults || superclass.defaults
+            end
+
+            def self.schema_properties
+              @schema_properties
+            end
+
+            schema_instance.value["properties"].keys.then do |properties|
+              properties.each do |prop|
+                define_method(prop.to_sym) { @data[prop.to_sym] }
+              end
             end
           end
         end
