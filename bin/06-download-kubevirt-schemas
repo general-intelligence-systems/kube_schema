@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Downloads the KubeVirt OpenAPI swagger spec from GitHub and extracts all
-# kubevirt.io API group definitions with transitive $ref resolution.
+# KubeVirt-specific definitions (everything not under k8s.io).
 #
 # This is needed because KubeVirt types are served via an aggregated API
 # server (not regular CRDs), so they can't be extracted by applying CRD
@@ -21,58 +21,20 @@ mkdir -p data/crds
 echo "Downloading kubevirt swagger.json..."
 curl -fsSL "$SWAGGER_URL" -o "$SWAGGER_FILE"
 
-echo "Extracting kubevirt.io definitions with transitive \$ref resolution..."
+echo "Extracting KubeVirt definitions (non-k8s.io)..."
 
-# Pass 1: Extract seed definition keys (those with kubevirt.io GVK annotations)
-echo "  Pass 1: Finding seed definitions..."
-jq -r '
-  [.definitions | to_entries[]
-    | select(.value["x-kubernetes-group-version-kind"]
-        | if . then any(.[]; .group | test("kubevirt\\.io$")) else false end)
-    | .key
-  ] | .[]
-' "$SWAGGER_FILE" > data/crds/08-kubevirt-seed-keys.txt
-
-SEED_COUNT=$(wc -l < data/crds/08-kubevirt-seed-keys.txt)
-echo "  Found $SEED_COUNT seed definitions"
-
-# Pass 2: Iteratively resolve $ref dependencies
-echo "  Pass 2: Resolving transitive \$ref dependencies..."
-cp data/crds/08-kubevirt-seed-keys.txt data/crds/08-kubevirt-all-keys.txt
-
-while true; do
-  # Find all $ref targets from current set of definitions
-  jq --rawfile keys data/crds/08-kubevirt-all-keys.txt -r '
-    ($keys | split("\n") | map(select(length > 0))) as $current |
-    ($current | map({(.): true}) | add) as $set |
-    [ $current[] as $key |
-      .definitions[$key] // empty |
-      [recurse | strings | select(startswith("#/definitions/"))] |
-      map(ltrimstr("#/definitions/")) | .[]
-    ] | unique | map(select(. as $k | $set[$k] | not)) | .[]
-  ' "$SWAGGER_FILE" > data/crds/08-kubevirt-new-keys.txt
-
-  NEW_COUNT=$(wc -l < data/crds/08-kubevirt-new-keys.txt)
-  if [ "$NEW_COUNT" -eq 0 ]; then
-    break
-  fi
-
-  echo "    Found $NEW_COUNT new referenced definitions"
-  cat data/crds/08-kubevirt-new-keys.txt >> data/crds/08-kubevirt-all-keys.txt
-done
-
-TOTAL_COUNT=$(wc -l < data/crds/08-kubevirt-all-keys.txt)
-echo "  Total: $TOTAL_COUNT definitions (seeds + transitive deps)"
-
-# Pass 3: Extract all collected definitions into the output file
-echo "  Pass 3: Extracting definitions to $OUTPUT_FILE..."
-jq --rawfile keys data/crds/08-kubevirt-all-keys.txt '
-  ($keys | split("\n") | map(select(length > 0))) as $k |
-  .definitions | with_entries(select(IN($k[]; .key)))
+# The KubeVirt swagger has no x-kubernetes-group-version-kind annotations.
+# KubeVirt-specific definitions use prefixes like v1., v1alpha1., v1beta1.
+# while vendored k8s types use k8s.io.* prefixes. Extract everything that
+# is NOT a k8s.io dependency.
+jq '
+  .definitions | with_entries(select(.key | startswith("k8s.io.") | not))
 ' "$SWAGGER_FILE" > "$OUTPUT_FILE"
 
-# Clean up intermediate files
-rm -f data/crds/08-kubevirt-seed-keys.txt data/crds/08-kubevirt-new-keys.txt data/crds/08-kubevirt-all-keys.txt
+TOTAL_COUNT=$(jq 'length' "$OUTPUT_FILE")
+echo "  Extracted $TOTAL_COUNT KubeVirt definitions"
+
+# Clean up
 rm -f "$SWAGGER_FILE"
 
 OUTPUT_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
