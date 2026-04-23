@@ -311,6 +311,42 @@ if __FILE__ == $0
       end
     end
 
+    describe "KubeVirt schemas" do
+      it "resolves VirtualMachine" do
+        klass = instance["VirtualMachine"]
+        expect(klass).to be_a(Class)
+        expect(klass).to be < Kube::Schema::Resource
+      end
+
+      it "has correct defaults for VirtualMachine" do
+        klass = instance["VirtualMachine"]
+        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" })
+      end
+
+      it "includes VirtualMachine in list_resources" do
+        expect(instance.list_resources).to include("VirtualMachine")
+      end
+
+      it "resolves VirtualMachineInstance" do
+        klass = instance["VirtualMachineInstance"]
+        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachineInstance" })
+      end
+
+      it "resolves KubeVirt" do
+        klass = instance["KubeVirt"]
+        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "KubeVirt" })
+      end
+
+      it "can instantiate a VirtualMachine with the block DSL" do
+        resource = instance["VirtualMachine"].new {
+          metadata.name = "test-vm"
+        }
+        expect(resource.to_h[:apiVersion]).to eq("kubevirt.io/v1")
+        expect(resource.to_h[:kind]).to eq("VirtualMachine")
+        expect(resource.to_h[:metadata][:name]).to eq("test-vm")
+      end
+    end
+
     describe "class-level schemer cache" do
       it "shares the schemer across instances of the same version" do
         a = described_class.new("1.34")

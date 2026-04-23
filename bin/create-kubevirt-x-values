@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#
+# Rewrites schemas/kubevirt-definitions.json in-place to add
+# x-kubernetes-group-version-kind annotations derived from the
+# KubeVirt swagger.json API paths.
+#
+set -euo pipefail
+
+SWAGGER_URL="https://raw.githubusercontent.com/kubevirt/kubevirt/refs/heads/main/api/openapi-spec/swagger.json"
+DEFS_FILE="schemas/kubevirt-definitions.json"
+TMP_SWAGGER=$(mktemp)
+
+trap "rm -f $TMP_SWAGGER" EXIT
+
+echo "Downloading kubevirt swagger.json..."
+curl -fsSL "$SWAGGER_URL" -o "$TMP_SWAGGER"
+
+echo "Building GVK map from API paths and rewriting $DEFS_FILE..."
+
+jq --slurpfile swagger "$TMP_SWAGGER" '
+  # Build a GVK lookup from the swagger paths.
+  # Matches both namespaced and cluster-scoped resource paths.
+  ($swagger[0].paths | to_entries | [
+    .[] |
+    # Namespaced: /apis/{group}/{version}/namespaces/{namespace}/{resource}/{name}
+    ( .key | capture("/apis/(?<group>[^/]+)/(?<version>[^/]+)/namespaces/\\{namespace\\}/(?<resource>[^/]+)/\\{name\\}$") // null ) as $ns_match |
+    # Cluster-scoped: /apis/{group}/{version}/{resource}/{name} (no namespaces, no watch)
+    ( .key | capture("/apis/(?<group>[^/]+)/(?<version>[^/]+)/(?<resource>[^/]+)/\\{name\\}$") // null ) as $cl_match |
+    ( if $ns_match then $ns_match elif ($cl_match and (.key | test("namespaces|watch") | not)) then $cl_match else null end ) as $match |
+    select($match != null) |
+    ( .value.get.responses["200"].schema["$ref"] // "" | ltrimstr("#/definitions/") ) as $def |
+    select($def | length > 0) |
+    { key: $def, value: [{ group: $match.group, version: $match.version, kind: ($def | split(".") | last) }] }
+  ] | from_entries) as $gvk_map |
+
+  # Rewrite each definition: inject x-kubernetes-group-version-kind if we have a mapping
+  with_entries(
+    if $gvk_map[.key] then
+      .value["x-kubernetes-group-version-kind"] = $gvk_map[.key]
+    else . end
+  )
+' "$DEFS_FILE" > "${DEFS_FILE}.tmp" && mv "${DEFS_FILE}.tmp" "$DEFS_FILE"
+
+ANNOTATED=$(jq '[.[] | select(has("x-kubernetes-group-version-kind"))] | length' "$DEFS_FILE")
+TOTAL=$(jq 'length' "$DEFS_FILE")
+echo "Done. $ANNOTATED/$TOTAL definitions annotated with x-kubernetes-group-version-kind."

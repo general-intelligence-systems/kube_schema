@@ -2107,7 +2107,14 @@
         "default": {},
         "$ref": "#/definitions/v1.KubeVirtStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "KubeVirt"
+      }
+    ]
   },
   "v1.KubeVirtCertificateRotateStrategy": {
     "type": "object",
@@ -4274,7 +4281,14 @@
         "default": {},
         "$ref": "#/definitions/v1.VirtualMachineStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachine"
+      }
+    ]
   },
   "v1.VirtualMachineCondition": {
     "description": "VirtualMachineCondition represents the state of VirtualMachine",
@@ -4338,7 +4352,14 @@
       "status": {
         "$ref": "#/definitions/v1.VirtualMachineExportStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "export.kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachineExport"
+      }
+    ]
   },
   "v1.VirtualMachineExportBackup": {
     "description": "VirtualMachineExportBackup contains the name and available endpoints for the exported backup",
@@ -4628,7 +4649,14 @@
         "default": {},
         "$ref": "#/definitions/v1.VirtualMachineInstanceStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachineInstance"
+      }
+    ]
   },
   "v1.VirtualMachineInstanceBackupStatus": {
     "description": "VirtualMachineInstanceBackupStatus tracks the information of the executed backup",
@@ -5008,7 +5036,14 @@
         "default": {},
         "$ref": "#/definitions/v1.VirtualMachineInstanceMigrationStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachineInstanceMigration"
+      }
+    ]
   },
   "v1.VirtualMachineInstanceMigrationCondition": {
     "type": "object",
@@ -5524,7 +5559,14 @@
         "default": {},
         "$ref": "#/definitions/v1.VirtualMachineInstancePresetSpec"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachineInstancePreset"
+      }
+    ]
   },
   "v1.VirtualMachineInstancePresetList": {
     "description": "VirtualMachineInstancePresetList is a list of VirtualMachinePresets",
@@ -5609,7 +5651,14 @@
         "default": {},
         "$ref": "#/definitions/v1.VirtualMachineInstanceReplicaSetStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "kubevirt.io",
+        "version": "v1",
+        "kind": "VirtualMachineInstanceReplicaSet"
+      }
+    ]
   },
   "v1.VirtualMachineInstanceReplicaSetCondition": {
     "type": "object",
@@ -6670,7 +6719,14 @@
         "default": {},
         "$ref": "#/definitions/v1alpha1.MigrationPolicyStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "migrations.kubevirt.io",
+        "version": "v1alpha1",
+        "kind": "MigrationPolicy"
+      }
+    ]
   },
   "v1alpha1.MigrationPolicyList": {
     "description": "MigrationPolicyList is a list of MigrationPolicy",
@@ -6777,7 +6833,14 @@
       "status": {
         "$ref": "#/definitions/v1alpha1.VirtualMachineBackupStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "backup.kubevirt.io",
+        "version": "v1alpha1",
+        "kind": "VirtualMachineBackup"
+      }
+    ]
   },
   "v1alpha1.VirtualMachineBackupList": {
     "description": "VirtualMachineBackupList is a list of VirtualMachineBackup resources",
@@ -7788,7 +7851,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachineCloneStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "clone.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineClone"
+      }
+    ]
   },
   "v1beta1.VirtualMachineCloneList": {
     "description": "VirtualMachineCloneList is a list of MigrationPolicy",
@@ -7959,7 +8029,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachineInstancetypeSpec"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "instancetype.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineClusterInstancetype"
+      }
+    ]
   },
   "v1beta1.VirtualMachineClusterInstancetypeList": {
     "description": "VirtualMachineClusterInstancetypeList is a list of VirtualMachineClusterInstancetype resources.",
@@ -8013,7 +8090,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachinePreferenceSpec"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "instancetype.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineClusterPreference"
+      }
+    ]
   },
   "v1beta1.VirtualMachineClusterPreferenceList": {
     "description": "VirtualMachineClusterPreferenceList is a list of VirtualMachineClusterPreference resources.",
@@ -8068,7 +8152,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachineInstancetypeSpec"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "instancetype.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineInstancetype"
+      }
+    ]
   },
   "v1beta1.VirtualMachineInstancetypeList": {
     "description": "VirtualMachineInstancetypeList is a list of VirtualMachineInstancetype resources.",
@@ -8198,7 +8289,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachinePoolStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "pool.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachinePool"
+      }
+    ]
   },
   "v1beta1.VirtualMachinePoolAutohealingStrategy": {
     "type": "object",
@@ -8489,7 +8587,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.VirtualMachinePreferenceSpec"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "instancetype.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachinePreference"
+      }
+    ]
   },
   "v1beta1.VirtualMachinePreferenceList": {
     "description": "VirtualMachinePreferenceList is a list of VirtualMachinePreference resources.",
@@ -8610,7 +8715,14 @@
       "status": {
         "$ref": "#/definitions/v1beta1.VirtualMachineRestoreStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "snapshot.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineRestore"
+      }
+    ]
   },
   "v1beta1.VirtualMachineRestoreList": {
     "description": "VirtualMachineRestoreList is a list of VirtualMachineRestore resources",
@@ -8750,7 +8862,14 @@
       "status": {
         "$ref": "#/definitions/v1beta1.VirtualMachineSnapshotStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "snapshot.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineSnapshot"
+      }
+    ]
   },
   "v1beta1.VirtualMachineSnapshotContent": {
     "description": "VirtualMachineSnapshotContent contains the snapshot data",
@@ -8778,7 +8897,14 @@
       "status": {
         "$ref": "#/definitions/v1beta1.VirtualMachineSnapshotContentStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "snapshot.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "VirtualMachineSnapshotContent"
+      }
+    ]
   },
   "v1beta1.VirtualMachineSnapshotContentList": {
     "description": "VirtualMachineSnapshotContentList is a list of VirtualMachineSnapshot resources",
