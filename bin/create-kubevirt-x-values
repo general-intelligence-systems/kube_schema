@@ -1,46 +1,54 @@
 #!/usr/bin/env bash
 #
-# Rewrites schemas/kubevirt-definitions.json in-place to add
-# x-kubernetes-group-version-kind annotations derived from the
-# KubeVirt swagger.json API paths.
+# Rewrites schemas/kubevirt-definitions.json in-place to:
+#   1. Add x-kubernetes-group-version-kind annotations
+#   2. Fix $ref pointers from k8s.io.* to io.k8s.* prefix
 #
 set -euo pipefail
 
-SWAGGER_URL="https://raw.githubusercontent.com/kubevirt/kubevirt/refs/heads/main/api/openapi-spec/swagger.json"
 DEFS_FILE="schemas/kubevirt-definitions.json"
-TMP_SWAGGER=$(mktemp)
 
-trap "rm -f $TMP_SWAGGER" EXIT
+echo "Rewriting $DEFS_FILE..."
 
-echo "Downloading kubevirt swagger.json..."
-curl -fsSL "$SWAGGER_URL" -o "$TMP_SWAGGER"
+jq '
+  # GVK map: definition key -> [{ group, version, kind }]
+  {
+    "v1.KubeVirt":                              [{ group: "kubevirt.io",              version: "v1",        kind: "KubeVirt" }],
+    "v1.VirtualMachine":                        [{ group: "kubevirt.io",              version: "v1",        kind: "VirtualMachine" }],
+    "v1.VirtualMachineExport":                  [{ group: "export.kubevirt.io",       version: "v1",        kind: "VirtualMachineExport" }],
+    "v1.VirtualMachineInstance":                [{ group: "kubevirt.io",              version: "v1",        kind: "VirtualMachineInstance" }],
+    "v1.VirtualMachineInstanceMigration":       [{ group: "kubevirt.io",              version: "v1",        kind: "VirtualMachineInstanceMigration" }],
+    "v1.VirtualMachineInstancePreset":          [{ group: "kubevirt.io",              version: "v1",        kind: "VirtualMachineInstancePreset" }],
+    "v1.VirtualMachineInstanceReplicaSet":      [{ group: "kubevirt.io",              version: "v1",        kind: "VirtualMachineInstanceReplicaSet" }],
+    "v1alpha1.MigrationPolicy":                 [{ group: "migrations.kubevirt.io",   version: "v1alpha1",  kind: "MigrationPolicy" }],
+    "v1alpha1.VirtualMachineBackup":            [{ group: "backup.kubevirt.io",       version: "v1alpha1",  kind: "VirtualMachineBackup" }],
+    "v1beta1.VirtualMachineClone":              [{ group: "clone.kubevirt.io",        version: "v1beta1",   kind: "VirtualMachineClone" }],
+    "v1beta1.VirtualMachineClusterInstancetype":[{ group: "instancetype.kubevirt.io", version: "v1beta1",   kind: "VirtualMachineClusterInstancetype" }],
+    "v1beta1.VirtualMachineClusterPreference":  [{ group: "instancetype.kubevirt.io", version: "v1beta1",   kind: "VirtualMachineClusterPreference" }],
+    "v1beta1.VirtualMachineInstancetype":       [{ group: "instancetype.kubevirt.io", version: "v1beta1",   kind: "VirtualMachineInstancetype" }],
+    "v1beta1.VirtualMachinePool":               [{ group: "pool.kubevirt.io",         version: "v1beta1",   kind: "VirtualMachinePool" }],
+    "v1beta1.VirtualMachinePreference":         [{ group: "instancetype.kubevirt.io", version: "v1beta1",   kind: "VirtualMachinePreference" }],
+    "v1beta1.VirtualMachineRestore":            [{ group: "snapshot.kubevirt.io",     version: "v1beta1",   kind: "VirtualMachineRestore" }],
+    "v1beta1.VirtualMachineSnapshot":           [{ group: "snapshot.kubevirt.io",     version: "v1beta1",   kind: "VirtualMachineSnapshot" }],
+    "v1beta1.VirtualMachineSnapshotContent":    [{ group: "snapshot.kubevirt.io",     version: "v1beta1",   kind: "VirtualMachineSnapshotContent" }]
+  } as $gvk_map |
 
-echo "Building GVK map from API paths and rewriting $DEFS_FILE..."
-
-jq --slurpfile swagger "$TMP_SWAGGER" '
-  # Build a GVK lookup from the swagger paths.
-  # Matches both namespaced and cluster-scoped resource paths.
-  ($swagger[0].paths | to_entries | [
-    .[] |
-    # Namespaced: /apis/{group}/{version}/namespaces/{namespace}/{resource}/{name}
-    ( .key | capture("/apis/(?<group>[^/]+)/(?<version>[^/]+)/namespaces/\\{namespace\\}/(?<resource>[^/]+)/\\{name\\}$") // null ) as $ns_match |
-    # Cluster-scoped: /apis/{group}/{version}/{resource}/{name} (no namespaces, no watch)
-    ( .key | capture("/apis/(?<group>[^/]+)/(?<version>[^/]+)/(?<resource>[^/]+)/\\{name\\}$") // null ) as $cl_match |
-    ( if $ns_match then $ns_match elif ($cl_match and (.key | test("namespaces|watch") | not)) then $cl_match else null end ) as $match |
-    select($match != null) |
-    ( .value.get.responses["200"].schema["$ref"] // "" | ltrimstr("#/definitions/") ) as $def |
-    select($def | length > 0) |
-    { key: $def, value: [{ group: $match.group, version: $match.version, kind: ($def | split(".") | last) }] }
-  ] | from_entries) as $gvk_map |
-
-  # Rewrite each definition: inject x-kubernetes-group-version-kind if we have a mapping
+  # Inject x-kubernetes-group-version-kind annotations
   with_entries(
     if $gvk_map[.key] then
       .value["x-kubernetes-group-version-kind"] = $gvk_map[.key]
+    else . end
+  ) |
+
+  # Fix $ref pointers: kubevirt uses k8s.io.* but base schema uses io.k8s.*
+  walk(
+    if type == "string" and startswith("#/definitions/k8s.io.")
+    then sub("^#/definitions/k8s\\.io\\."; "#/definitions/io.k8s.")
     else . end
   )
 ' "$DEFS_FILE" > "${DEFS_FILE}.tmp" && mv "${DEFS_FILE}.tmp" "$DEFS_FILE"
 
 ANNOTATED=$(jq '[.[] | select(has("x-kubernetes-group-version-kind"))] | length' "$DEFS_FILE")
 TOTAL=$(jq 'length' "$DEFS_FILE")
-echo "Done. $ANNOTATED/$TOTAL definitions annotated with x-kubernetes-group-version-kind."
+STALE_REFS=$(jq -r '[.. | strings | select(startswith("#/definitions/k8s.io."))] | length' "$DEFS_FILE")
+echo "Done. $ANNOTATED/$TOTAL definitions annotated. $STALE_REFS stale k8s.io refs remaining."

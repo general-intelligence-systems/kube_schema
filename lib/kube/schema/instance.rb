@@ -345,6 +345,22 @@ if __FILE__ == $0
         expect(resource.to_h[:kind]).to eq("VirtualMachine")
         expect(resource.to_h[:metadata][:name]).to eq("test-vm")
       end
+
+      it "validates a VirtualMachine without $ref resolution errors" do
+        resource = instance["VirtualMachine"].new {
+          metadata.name = "test-vm"
+          spec.runStrategy = "Always"
+          spec.template.metadata.labels = { "kubevirt.io/vm": "test-vm" }
+          spec.template.spec.domain.cpu = { cores: 1 }
+          spec.template.spec.domain.devices = {}
+          spec.template.spec.domain.memory = { guest: "1Gi" }
+          spec.template.spec.domain.resources = { requests: { memory: "1Gi" } }
+          spec.template.spec.volumes = [
+            { name: "rootdisk", containerDisk: { image: "registry.example.com/vm:latest" } }
+          ]
+        }
+        expect { resource.to_yaml }.not_to raise_error
+      end
     end
 
     describe "class-level schemer cache" do
