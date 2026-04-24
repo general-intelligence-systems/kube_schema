@@ -105,6 +105,8 @@ module Kube
 
         def deep_compact(obj)
           case obj
+          when Kube::Schema::SubSpec
+            deep_compact(obj.to_h)
           when Hash
             obj.each_with_object({}) do |(k, v), result|
               compacted = deep_compact(v)

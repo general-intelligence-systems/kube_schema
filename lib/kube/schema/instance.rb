@@ -27,6 +27,7 @@ module Kube
 
       def initialize(version)
         @resource_classes = {}
+        @sub_spec_classes = {}
 
         unless Gem::Version.correct?(version)
           raise UnknownVersionError,
@@ -69,6 +70,39 @@ module Kube
       # @return [Array<String>] sorted kind names
       def list_resources
         (gvk_index.keys + Schema.custom_schemas.keys).uniq.sort
+      end
+
+      # Look up a sub-spec definition by short name (e.g. "Container",
+      # "ContainerPort", "Volume", "Probe"). Returns a class that
+      # inherits from Kube::Schema::SubSpec.
+      #
+      # Also accepts a full definition key like
+      # "io.k8s.api.core.v1.Container" for disambiguation.
+      #
+      #   instance.sub_spec("Container")     # => SubSpec subclass
+      #   instance.sub_spec("ContainerPort") # => SubSpec subclass
+      #
+      def sub_spec(name)
+        @sub_spec_classes[name] ||= begin
+          definition_key = find_definition_key(name)
+
+          if definition_key.nil?
+            raise "No definition found for #{name}!" \
+              "\nUse #list_definitions to see available definitions for v#{version}."
+          end
+
+          ref_schema = schemer.ref("#/definitions/#{definition_key}")
+          build_sub_spec_class(ref_schema, name)
+        end
+      end
+
+      # All available definition short names for this version.
+      #
+      # @return [Array<String>] sorted, deduplicated short names
+      def list_definitions
+        schemer.value.fetch("definitions", {}).keys
+          .map { |k| k.split(".").last }
+          .uniq.sort
       end
 
       private
@@ -210,6 +244,62 @@ module Kube
               properties.each do |prop|
                 define_method(prop.to_sym) { @data[prop.to_sym] }
               end
+            end
+          end
+        end
+
+        # Resolve a short name like "Container" to its full definition key
+        # "io.k8s.api.core.v1.Container".
+        #
+        # Strategy:
+        #   1. Exact match on full key (for power users)
+        #   2. Short-name match on last segment
+        #   3. Prefer stable API versions (v1 > v1beta1 > v1alpha1)
+        def find_definition_key(name)
+          definitions = schemer.value.fetch("definitions", {})
+
+          # Exact full-key match
+          return name if definitions.key?(name)
+
+          # Short-name matches (last segment after final ".")
+          candidates = definitions.keys.select { |k| k.split(".").last == name }
+          return nil if candidates.empty?
+          return candidates.first if candidates.size == 1
+
+          # Disambiguation: prefer stable versions, then beta, then alpha
+          candidates.min_by { |k|
+            version_segment = k.split(".")[-2].to_s
+            case version_segment
+            when /\Av\d+\z/ then [0, version_segment]
+            when /beta/      then [1, version_segment]
+            when /alpha/     then [2, version_segment]
+            else                  [3, version_segment]
+            end
+          }
+        end
+
+        # Build a SubSpec subclass from a JSONSchemer instance and a
+        # human-readable definition name (for error messages).
+        def build_sub_spec_class(schema_instance, definition_name)
+          Class.new(::Kube::Schema::SubSpec) do
+            @schema = schema_instance
+            @definition_name = definition_name
+            @schema_properties = @schema.value.fetch("properties", {}).keys.map(&:to_sym)
+
+            def self.schema
+              @schema || superclass.schema
+            end
+
+            def self.definition_name
+              @definition_name
+            end
+
+            def self.schema_properties
+              @schema_properties
+            end
+
+            schema_instance.value.fetch("properties", {}).keys.each do |prop|
+              define_method(prop.to_sym) { @data[prop.to_sym] }
             end
           end
         end

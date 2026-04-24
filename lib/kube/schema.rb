@@ -4,6 +4,7 @@ require_relative 'monkey_patches'
 require_relative 'errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
+require_relative 'schema/sub_spec'
 require_relative 'schema/instance'
 require_relative 'schema/manifest'
 
