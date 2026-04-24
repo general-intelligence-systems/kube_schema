@@ -237,7 +237,7 @@ module Kube
             end
 
             def self.schema_properties
-              @schema_properties
+              @schema_properties || superclass.schema_properties
             end
 
             schema_instance.value["properties"].keys.then do |properties|
@@ -291,11 +291,11 @@ module Kube
             end
 
             def self.definition_name
-              @definition_name
+              @definition_name || superclass.definition_name
             end
 
             def self.schema_properties
-              @schema_properties
+              @schema_properties || superclass.schema_properties
             end
 
             schema_instance.value.fetch("properties", {}).keys.each do |prop|
