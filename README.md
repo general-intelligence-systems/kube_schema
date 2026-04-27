@@ -256,4 +256,4 @@ Kube::Schema["Deployment"]  # uses 1.31
 
 ## Built with
 
-[black_hole_struct](https://github.com/aanand/black_hole_struct) -- the dynamic nested struct that powers the block DSL. [json_schemer](https://github.com/davishmcclurg/json_schemer) -- JSON Schema validation against the real Kubernetes OpenAPI specs.
+[json_schemer](https://github.com/davishmcclurg/json_schemer) -- JSON Schema validation against the real Kubernetes OpenAPI specs.
