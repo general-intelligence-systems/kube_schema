@@ -3353,7 +3353,7 @@
         "format": "int32"
       },
       "guestAgentPing": {
-        "description": "GuestAgentPing contacts the qemu-guest-agent for availability checks.",
+        "description": "GuestAgentPing contacts the qemu-guest-agent for availability checks. Probe failures are automatically suppressed when the guest agent is unreachable for a non-fault reason: during live migration (guest paused on one pod while memory is transferred) and whenever the VM is paused for an intentional or transient reason such as a user pause, snapshot, save, or dump. Failures are not suppressed when the VM is paused due to a fault (IO error, crash, or postcopy failure).",
         "$ref": "#/definitions/v1.GuestAgentPing"
       },
       "httpGet": {
@@ -6607,42 +6607,6 @@
       }
     }
   },
-  "v1alpha1.Condition": {
-    "description": "Condition defines conditions",
-    "type": "object",
-    "required": [
-      "type",
-      "status"
-    ],
-    "properties": {
-      "lastProbeTime": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "lastTransitionTime": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "message": {
-        "type": "string"
-      },
-      "reason": {
-        "type": "string"
-      },
-      "status": {
-        "type": "string",
-        "default": ""
-      },
-      "type": {
-        "type": "string",
-        "default": ""
-      }
-    }
-  },
   "v1alpha1.MigrationPolicy": {
     "description": "MigrationPolicy holds migration policy (i.e. configurations) to apply to a VM or group of VMs",
     "type": "object",
@@ -6860,9 +6824,12 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1alpha1.Condition"
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.apis.meta.v1.Condition"
         },
-        "x-kubernetes-list-type": "atomic"
+        "x-kubernetes-list-map-keys": [
+          "type"
+        ],
+        "x-kubernetes-list-type": "map"
       },
       "endpointCert": {
         "description": "EndpointCert is the raw CACert that is to be used when connecting to an exported backup endpoint in pull mode.",

@@ -1,0 +1,14 @@
+# Helm charts that contain CRDs. Each entry is rendered via `helm template`
+# and appended to data/crds/00-all-crds.yaml before the k3s extraction step.
+#
+# Fields:
+#   name:      release name passed to `helm template`
+#   chart:     OCI or repo chart reference
+#   version:   chart version
+#   namespace: namespace for template rendering (optional, defaults to "default")
+
+# Agentgateway
+- name: agentgateway-crds
+  chart: oci://cr.agentgateway.dev/charts/agentgateway-crds
+  version: v1.1.0
+  namespace: agentgateway-system

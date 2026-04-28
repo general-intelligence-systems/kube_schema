@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+#
+# Renders Helm charts listed in data/helm-crd-list.yaml via `helm template`
+# and appends the output to data/crds/00-all-crds.yaml so that bin/04-get-crd-json
+# picks them up alongside the raw-YAML CRDs.
+#
+# This is needed for projects like agentgateway that distribute CRDs exclusively
+# as OCI Helm charts rather than raw YAML manifests.
+
+require 'yaml'
+
+GEM_ROOT = File.expand_path("..", __dir__)
+ALL_CRDS = File.join(GEM_ROOT, "data", "crds", "00-all-crds.yaml")
+
+`mkdir -p data/crds`
+
+charts = YAML.load_file(File.join(GEM_ROOT, 'data/helm-crd-list.yaml'))
+
+charts.each do |chart|
+  name      = chart['name']
+  repo      = chart['chart']
+  version   = chart['version']
+  namespace = chart['namespace'] || 'default'
+
+  puts "Rendering #{name} (#{repo} @ #{version})..."
+
+  output = `helm template #{name} #{repo} --version #{version} --namespace #{namespace} 2>&1`
+
+  unless $?.success?
+    warn "Failed to render #{name}:\n#{output}"
+    exit 1
+  end
+
+  # helm template for OCI charts prints a JSON pull-metadata line (e.g.
+  # {"Digest":"sha256:...","Pulled":"..."}) alongside the rendered YAML.
+  # Strip those lines so kubectl apply doesn't choke on them.
+  output = output.lines.reject { |l| l.strip.start_with?('{') && l.strip.end_with?('}') }.join
+
+  File.open(ALL_CRDS, 'a') do |f|
+    f.puts "\n---"
+    f.puts output
+  end
+
+  puts "  Appended to #{ALL_CRDS}"
+end

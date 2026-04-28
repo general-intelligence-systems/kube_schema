@@ -2,6 +2,7 @@
 
 bin/01-download
 bin/03-download-crds
+bin/03-download-helm-crds
 bin/04-get-crd-json
 bin/05-download-loft-schemas
 bin/06-download-kubevirt-schemas
