@@ -1,5 +1,7 @@
 # kube_schema
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/general-intelligence-systems/kube_schema)
+
 Ruby objects for every Kubernetes resource. Validated against the real OpenAPI spec. No YAML. No hash literals. Just Ruby blocks that know their schema.
 
 ## Usage
