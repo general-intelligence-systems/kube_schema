@@ -1,19 +1,6 @@
 # kube_schema
 
-Ruby objects for every Kubernetes resource. Validated against the real OpenAPI spec.
-
-```ruby
-Kube::Schema["Deployment"].new {
-  metadata.name = "web"
-  metadata.namespace = "prod"
-  spec.replicas = 3
-  spec.template.spec.containers = [
-    { name: "app", image: "nginx:1.27", ports: [{ containerPort: 80 }] }
-  ]
-}
-```
-
-No YAML. No hash literals. Just Ruby blocks that know their schema.
+Ruby objects for every Kubernetes resource. Validated against the real OpenAPI spec. No YAML. No hash literals. Just Ruby blocks that know their schema.
 
 ## Usage
 
