@@ -4,6 +4,8 @@ mkdir -p schemas
 git show schemas2:data/crds/05-crd-only-definitions.json > schemas/crd-definitions.json
 git show schemas2:data/crds/07-loft-definitions.json > schemas/loft-definitions.json
 git show schemas2:data/crds/08-kubevirt-definitions.json > schemas/kubevirt-definitions.json
+git show schemas2:data/crds/09-cdi-definitions.json > schemas/cdi-definitions.json
+
 
 git ls-tree --name-only schemas2 data/k8s.io/ | while read -r path; do
   git show "schemas2:$path" > "schemas/$(basename "$path")"
