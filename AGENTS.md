@@ -51,6 +51,15 @@ Like Loft, KubeVirt types are served via an aggregated API server. The approach 
 - **Source:** `https://raw.githubusercontent.com/kubevirt/kubevirt/refs/heads/main/api/openapi-spec/swagger.json`
 - **Output:** `data/crds/08-kubevirt-definitions.json`
 
+## Approach 5: Aggregated API Server Swagger — CDI (`bin/07-download-cdi-schemas`)
+
+**Language:** Bash + jq
+
+Like KubeVirt, the Containerized Data Importer (CDI) types are served via an aggregated API server. CDI-specific definitions use `v1beta1.*` and `api.*` prefixes while vendored k8s types use `v1.*`, `resource.*`, and `runtime.*` prefixes. The script filters out vendored types to keep only CDI-native definitions.
+
+- **Source:** `https://raw.githubusercontent.com/kubevirt/containerized-data-importer/refs/heads/main/api/openapi-spec/swagger.json`
+- **Output:** `data/crds/09-cdi-definitions.json`
+
 ## Retired Scripts (`bin/old/`)
 
 These scripts are no longer called by `bin/run`.

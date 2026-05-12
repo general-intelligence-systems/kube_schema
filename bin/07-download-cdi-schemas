@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# Downloads the KubeVirt Containerized Data Importer (CDI) OpenAPI swagger
+# spec from GitHub and extracts all CDI-specific definitions.
+#
+# Like KubeVirt, CDI types are served via an aggregated API server (not
+# regular CRDs), so they can't be extracted by applying CRD YAMLs to k3s
+# like bin/04-get-crd-json does.
+#
+# CDI-specific definitions use v1beta1.* and api.* prefixes while vendored
+# k8s types use v1.*, resource.*, and runtime.* prefixes. We keep only the
+# CDI-native definitions.
+#
+# Output: data/crds/09-cdi-definitions.json
+#
+
+set -euo pipefail
+
+SWAGGER_URL="https://raw.githubusercontent.com/kubevirt/containerized-data-importer/refs/heads/main/api/openapi-spec/swagger.json"
+SWAGGER_FILE="data/crds/09-cdi-full-swagger.json"
+OUTPUT_FILE="data/crds/09-cdi-definitions.json"
+
+mkdir -p data/crds
+
+echo "Downloading CDI swagger.json..."
+curl -fsSL "$SWAGGER_URL" -o "$SWAGGER_FILE"
+
+echo "Extracting CDI definitions (non-k8s vendored types)..."
+
+# CDI swagger definition key prefixes:
+#   v1beta1.*  — CDI-native types (CDI, DataVolume, DataSource, etc.)
+#   api.*      — CDI-native helper types (e.g. api.NodePlacement)
+#   v1.*       — vendored k8s types (ObjectMeta, Status, etc.)
+#   resource.* — vendored k8s types (resource.Quantity)
+#   runtime.*  — vendored k8s types (runtime.RawExtension)
+#
+# Keep everything that is NOT a vendored k8s dependency.
+jq '
+  .definitions | with_entries(select(
+    (.key | startswith("v1.") | not) and
+    (.key | startswith("resource.") | not) and
+    (.key | startswith("runtime.") | not)
+  ))
+' "$SWAGGER_FILE" > "$OUTPUT_FILE"
+
+TOTAL_COUNT=$(jq 'length' "$OUTPUT_FILE")
+echo "  Extracted $TOTAL_COUNT CDI definitions"
+
+# Clean up
+rm -f "$SWAGGER_FILE"
+
+OUTPUT_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
+echo "Done. Output: $OUTPUT_FILE ($OUTPUT_SIZE)"
