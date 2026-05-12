@@ -1,3 +1,18 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: cdis.cdi.kubevirt.io
+spec:
+  group: cdi.kubevirt.io
+  names:
+    kind: CDI
+    listKind: CDIList
+    plural: cdis
+    singular: cdi
+  scope: Namespaced
+  version: v1alpha1
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -208826,8 +208841,10 @@ spec:
                       the Pulumi provider
                     properties:
                       accessToken:
-                        description: AccessToken is the access tokens to sign in to
-                          the Pulumi Cloud Console.
+                        description: |-
+                          AccessToken is the access tokens to sign in to the Pulumi Cloud Console.
+
+                          Deprecated: Use auth.accessToken instead.
                         properties:
                           secretRef:
                             description: SecretRef is a reference to a secret containing
@@ -208862,6 +208879,100 @@ spec:
                         default: https://api.pulumi.com/api/esc
                         description: APIURL is the URL of the Pulumi API.
                         type: string
+                      auth:
+                        description: |-
+                          Auth configures how the Operator authenticates with the Pulumi API.
+                          Either auth or the deprecated accessToken field must be specified.
+                        properties:
+                          accessToken:
+                            description: AccessToken authenticates using a Pulumi
+                              access token stored in a Kubernetes Secret.
+                            properties:
+                              secretRef:
+                                description: SecretRef is a reference to a secret
+                                  containing the Pulumi API token.
+                                properties:
+                                  key:
+                                    description: |-
+                                      A key in the referenced Secret.
+                                      Some instances of this field may be defaulted, in others it may be required.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[-._a-zA-Z0-9]+$
+                                    type: string
+                                  name:
+                                    description: The name of the Secret resource being
+                                      referred to.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  namespace:
+                                    description: |-
+                                      The namespace of the Secret resource being referred to.
+                                      Ignored if referent is not cluster-scoped, otherwise defaults to the namespace of the referent.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                type: object
+                            type: object
+                          oidcConfig:
+                            description: OIDCConfig authenticates using Kubernetes
+                              ServiceAccount tokens via OIDC.
+                            properties:
+                              expirationSeconds:
+                                default: 600
+                                description: |-
+                                  ExpirationSeconds sets the token validity duration for service account and OIDC token.
+                                  Defaults to 10 minutes.
+                                format: int64
+                                minimum: 600
+                                type: integer
+                              organization:
+                                description: Organization is the name of the Pulumi
+                                  organization configured for OIDC authentication.
+                                type: string
+                              serviceAccountRef:
+                                description: ServiceAccountRef specifies the Kubernetes
+                                  ServiceAccount to use for authentication.
+                                properties:
+                                  audiences:
+                                    description: |-
+                                      Audience specifies the `aud` claim for the service account token
+                                      If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity
+                                      then this audiences will be appended to the list
+                                    items:
+                                      type: string
+                                    type: array
+                                  name:
+                                    description: The name of the ServiceAccount resource
+                                      being referred to.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  namespace:
+                                    description: |-
+                                      Namespace of the resource being referred to.
+                                      Ignored if referent is not cluster-scoped, otherwise defaults to the namespace of the referent.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - organization
+                            - serviceAccountRef
+                            type: object
+                        type: object
+                        x-kubernetes-validations:
+                        - message: Exactly one of 'accessToken' or 'oidcConfig' must
+                            be specified
+                          rule: (has(self.accessToken) && !has(self.oidcConfig)) ||
+                            (!has(self.accessToken) && has(self.oidcConfig))
                       environment:
                         description: |-
                           Environment are YAML documents composed of static key-value pairs, programmatic expressions,
@@ -208879,11 +208990,15 @@ spec:
                           the environment belongs to.
                         type: string
                     required:
-                    - accessToken
                     - environment
                     - organization
                     - project
                     type: object
+                    x-kubernetes-validations:
+                    - message: Exactly one of 'auth' or deprecated 'accessToken' must
+                        be specified
+                      rule: (has(self.auth) && !has(self.accessToken)) || (!has(self.auth)
+                        && has(self.accessToken))
                   scaleway:
                     description: Scaleway configures this store to sync secrets using
                       the Scaleway provider.
@@ -221876,8 +221991,10 @@ spec:
                       the Pulumi provider
                     properties:
                       accessToken:
-                        description: AccessToken is the access tokens to sign in to
-                          the Pulumi Cloud Console.
+                        description: |-
+                          AccessToken is the access tokens to sign in to the Pulumi Cloud Console.
+
+                          Deprecated: Use auth.accessToken instead.
                         properties:
                           secretRef:
                             description: SecretRef is a reference to a secret containing
@@ -221912,6 +222029,100 @@ spec:
                         default: https://api.pulumi.com/api/esc
                         description: APIURL is the URL of the Pulumi API.
                         type: string
+                      auth:
+                        description: |-
+                          Auth configures how the Operator authenticates with the Pulumi API.
+                          Either auth or the deprecated accessToken field must be specified.
+                        properties:
+                          accessToken:
+                            description: AccessToken authenticates using a Pulumi
+                              access token stored in a Kubernetes Secret.
+                            properties:
+                              secretRef:
+                                description: SecretRef is a reference to a secret
+                                  containing the Pulumi API token.
+                                properties:
+                                  key:
+                                    description: |-
+                                      A key in the referenced Secret.
+                                      Some instances of this field may be defaulted, in others it may be required.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[-._a-zA-Z0-9]+$
+                                    type: string
+                                  name:
+                                    description: The name of the Secret resource being
+                                      referred to.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  namespace:
+                                    description: |-
+                                      The namespace of the Secret resource being referred to.
+                                      Ignored if referent is not cluster-scoped, otherwise defaults to the namespace of the referent.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                type: object
+                            type: object
+                          oidcConfig:
+                            description: OIDCConfig authenticates using Kubernetes
+                              ServiceAccount tokens via OIDC.
+                            properties:
+                              expirationSeconds:
+                                default: 600
+                                description: |-
+                                  ExpirationSeconds sets the token validity duration for service account and OIDC token.
+                                  Defaults to 10 minutes.
+                                format: int64
+                                minimum: 600
+                                type: integer
+                              organization:
+                                description: Organization is the name of the Pulumi
+                                  organization configured for OIDC authentication.
+                                type: string
+                              serviceAccountRef:
+                                description: ServiceAccountRef specifies the Kubernetes
+                                  ServiceAccount to use for authentication.
+                                properties:
+                                  audiences:
+                                    description: |-
+                                      Audience specifies the `aud` claim for the service account token
+                                      If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity
+                                      then this audiences will be appended to the list
+                                    items:
+                                      type: string
+                                    type: array
+                                  name:
+                                    description: The name of the ServiceAccount resource
+                                      being referred to.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  namespace:
+                                    description: |-
+                                      Namespace of the resource being referred to.
+                                      Ignored if referent is not cluster-scoped, otherwise defaults to the namespace of the referent.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - organization
+                            - serviceAccountRef
+                            type: object
+                        type: object
+                        x-kubernetes-validations:
+                        - message: Exactly one of 'accessToken' or 'oidcConfig' must
+                            be specified
+                          rule: (has(self.accessToken) && !has(self.oidcConfig)) ||
+                            (!has(self.accessToken) && has(self.oidcConfig))
                       environment:
                         description: |-
                           Environment are YAML documents composed of static key-value pairs, programmatic expressions,
@@ -221929,11 +222140,15 @@ spec:
                           the environment belongs to.
                         type: string
                     required:
-                    - accessToken
                     - environment
                     - organization
                     - project
                     type: object
+                    x-kubernetes-validations:
+                    - message: Exactly one of 'auth' or deprecated 'accessToken' must
+                        be specified
+                      rule: (has(self.auth) && !has(self.accessToken)) || (!has(self.auth)
+                        && has(self.accessToken))
                   scaleway:
                     description: Scaleway configures this store to sync secrets using
                       the Scaleway provider.
@@ -233831,7 +234046,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: challenges.acme.cert-manager.io
 spec:
   group: acme.cert-manager.io
@@ -237331,7 +237546,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: orders.acme.cert-manager.io
 spec:
   group: acme.cert-manager.io
@@ -237611,7 +237826,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: certificaterequests.cert-manager.io
 spec:
   group: cert-manager.io
@@ -237936,7 +238151,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: certificates.cert-manager.io
 spec:
   group: cert-manager.io
@@ -238815,7 +239030,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: clusterissuers.cert-manager.io
 spec:
   group: cert-manager.io
@@ -242961,7 +243176,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: issuers.cert-manager.io
 spec:
   group: cert-manager.io
@@ -253478,7 +253693,6 @@ spec:
                       procMount denotes the type of proc mount to use for the containers.
                       The default value is Default which uses the container runtime defaults for
                       readonly paths and masked paths.
-                      This requires the ProcMountType feature flag to be enabled.
                       Note that this field cannot be set when spec.os.name is windows.
                     type: string
                   readOnlyRootFilesystem:
@@ -259033,7 +259247,6 @@ spec:
                                     procMount denotes the type of proc mount to use for the containers.
                                     The default value is Default which uses the container runtime defaults for
                                     readonly paths and masked paths.
-                                    This requires the ProcMountType feature flag to be enabled.
                                     Note that this field cannot be set when spec.os.name is windows.
                                   type: string
                                 readOnlyRootFilesystem:
@@ -260604,7 +260817,6 @@ spec:
                                     procMount denotes the type of proc mount to use for the containers.
                                     The default value is Default which uses the container runtime defaults for
                                     readonly paths and masked paths.
-                                    This requires the ProcMountType feature flag to be enabled.
                                     Note that this field cannot be set when spec.os.name is windows.
                                   type: string
                                 readOnlyRootFilesystem:
@@ -261088,7 +261300,6 @@ spec:
                           When set to false, a new userns is created for the pod. Setting false is useful for
                           mitigating container breakout vulnerabilities even allowing users to run their
                           containers as root without actually having root privileges on the host.
-                          This field is alpha-level and is only honored by servers that enable the UserNamespacesSupport feature.
                         type: boolean
                       hostname:
                         description: |-
@@ -262258,7 +262469,6 @@ spec:
                                     procMount denotes the type of proc mount to use for the containers.
                                     The default value is Default which uses the container runtime defaults for
                                     readonly paths and masked paths.
-                                    This requires the ProcMountType feature flag to be enabled.
                                     Note that this field cannot be set when spec.os.name is windows.
                                   type: string
                                 readOnlyRootFilesystem:
@@ -262827,6 +263037,14 @@ spec:
 
                             It adds a name to it that uniquely identifies the ResourceClaim inside the Pod.
                             Containers that need access to the ResourceClaim reference it with this name.
+
+                            When the DRAWorkloadResourceClaims feature gate is enabled and this Pod
+                            belongs to a PodGroup, a PodResourceClaim is matched to a
+                            PodGroupResourceClaim if all of their fields are equal (Name,
+                            ResourceClaimName, and ResourceClaimTemplateName). A matched claim references
+                            a single ResourceClaim shared across all Pods in the PodGroup, reserved for
+                            the PodGroup in ResourceClaimStatus.ReservedFor rather than for individual
+                            Pods.
                           properties:
                             name:
                               description: |-
@@ -262851,6 +263069,16 @@ spec:
                                 will also be deleted. The pod name and resource name, along with a
                                 generated component, will be used to form a unique name for the
                                 ResourceClaim, which will be recorded in pod.status.resourceClaimStatuses.
+
+                                When the DRAWorkloadResourceClaims feature gate is enabled and the pod
+                                belongs to a PodGroup that defines a PodGroupResourceClaim with the same
+                                Name and ResourceClaimTemplateName, this PodResourceClaim resolves to the
+                                ResourceClaim generated for the PodGroup. All pods in the group that
+                                define an equivalent PodResourceClaim matching the
+                                PodGroupResourceClaim's Name and ResourceClaimTemplateName share the same
+                                generated ResourceClaim. ResourceClaims generated for a PodGroup are
+                                owned by the PodGroup and their lifecycles are tied to the PodGroup
+                                instead of any individual pod.
 
                                 This field is immutable and no changes will be made to the
                                 corresponding ResourceClaim by the control plane after creating the
@@ -262977,6 +263205,28 @@ spec:
                         x-kubernetes-list-map-keys:
                         - name
                         x-kubernetes-list-type: map
+                      schedulingGroup:
+                        description: |-
+                          SchedulingGroup provides a reference to the immediate scheduling runtime
+                          grouping object that this Pod belongs to.
+                          This field is used by the scheduler to identify the group and apply the
+                          correct group scheduling policies. The association with a group also
+                          impacts other lifecycle aspects of a Pod that are relevant in a wider context
+                          of scheduling like preemption, resource attachment, etc. If not specified,
+                          the Pod is treated as a single unit in all of these aspects.
+                          The group object referenced by this field may not exist at the time the
+                          Pod is created.
+                          This field is immutable, but a group object with the same name may be
+                          recreated with different policies. Doing this during pod scheduling
+                          may result in the placement not conforming to the expected policies.
+                        properties:
+                          podGroupName:
+                            description: |-
+                              PodGroupName specifies the name of the standalone PodGroup object
+                              that represents the runtime instance of this group.
+                              Must be a DNS subdomain.
+                            type: string
+                        type: object
                       securityContext:
                         description: |-
                           SecurityContext holds pod-level security attributes and common container settings.
@@ -264405,7 +264655,7 @@ spec:
                                 A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                                 The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                                 The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                                The volume will be mounted read-only (ro) and non-executable files (noexec).
+                                The volume will be mounted read-only (ro).
                                 Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                                 The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                               properties:
@@ -264577,8 +264827,7 @@ spec:
                               description: |-
                                 portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                                 Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                                are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                                is on.
+                                are redirected to the pxd.portworx.com CSI driver.
                               properties:
                                 fsType:
                                   description: |-
@@ -265401,42 +265650,6 @@ spec:
                         x-kubernetes-list-map-keys:
                         - name
                         x-kubernetes-list-type: map
-                      workloadRef:
-                        description: |-
-                          WorkloadRef provides a reference to the Workload object that this Pod belongs to.
-                          This field is used by the scheduler to identify the PodGroup and apply the
-                          correct group scheduling policies. The Workload object referenced
-                          by this field may not exist at the time the Pod is created.
-                          This field is immutable, but a Workload object with the same name
-                          may be recreated with different policies. Doing this during pod scheduling
-                          may result in the placement not conforming to the expected policies.
-                        properties:
-                          name:
-                            description: |-
-                              Name defines the name of the Workload object this Pod belongs to.
-                              Workload must be in the same namespace as the Pod.
-                              If it doesn't match any existing Workload, the Pod will remain unschedulable
-                              until a Workload object is created and observed by the kube-scheduler.
-                              It must be a DNS subdomain.
-                            type: string
-                          podGroup:
-                            description: |-
-                              PodGroup is the name of the PodGroup within the Workload that this Pod
-                              belongs to. If it doesn't match any existing PodGroup within the Workload,
-                              the Pod will remain unschedulable until the Workload object is recreated
-                              and observed by the kube-scheduler. It must be a DNS label.
-                            type: string
-                          podGroupReplicaKey:
-                            description: |-
-                              PodGroupReplicaKey specifies the replica key of the PodGroup to which this
-                              Pod belongs. It is used to distinguish pods belonging to different replicas
-                              of the same pod group. The pod group policy is applied separately to each replica.
-                              When set, it must be a DNS label.
-                            type: string
-                        required:
-                        - name
-                        - podGroup
-                        type: object
                     required:
                     - containers
                     type: object
