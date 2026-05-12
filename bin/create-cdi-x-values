@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# Rewrites schemas/cdi-definitions.json in-place to:
+#   1. Add x-kubernetes-group-version-kind annotations
+#   2. Fix $ref pointers from bare v1.* to io.k8s.* prefix
+#
+set -euo pipefail
+
+DEFS_FILE="schemas/cdi-definitions.json"
+
+echo "Rewriting $DEFS_FILE..."
+
+jq '
+  # GVK map: definition key -> [{ group, version, kind }]
+  {
+    "v1beta1.CDI":                [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "CDI" }],
+    "v1beta1.CDIConfig":          [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "CDIConfig" }],
+    "v1beta1.DataImportCron":     [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "DataImportCron" }],
+    "v1beta1.DataSource":         [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "DataSource" }],
+    "v1beta1.DataVolume":         [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "DataVolume" }],
+    "v1beta1.ObjectTransfer":     [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "ObjectTransfer" }],
+    "v1beta1.StorageProfile":     [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "StorageProfile" }],
+    "v1beta1.VolumeCloneSource":  [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "VolumeCloneSource" }],
+    "v1beta1.VolumeImportSource": [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "VolumeImportSource" }],
+    "v1beta1.VolumeUploadSource": [{ group: "cdi.kubevirt.io",            version: "v1beta1", kind: "VolumeUploadSource" }],
+    "v1beta1.UploadTokenRequest": [{ group: "upload.cdi.kubevirt.io",     version: "v1beta1", kind: "UploadTokenRequest" }]
+  } as $gvk_map |
+
+  # Explicit $ref rewrite map: bare v1.* -> io.k8s.* full paths
+  {
+    "#/definitions/v1.Affinity":                    "#/definitions/io.k8s.api.core.v1.Affinity",
+    "#/definitions/v1.Condition":                   "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Condition",
+    "#/definitions/v1.Duration":                    "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Duration",
+    "#/definitions/v1.LabelSelector":               "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector",
+    "#/definitions/v1.ListMeta":                    "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta",
+    "#/definitions/v1.LocalObjectReference":        "#/definitions/io.k8s.api.core.v1.LocalObjectReference",
+    "#/definitions/v1.ObjectMeta":                  "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
+    "#/definitions/v1.PersistentVolumeClaimSpec":   "#/definitions/io.k8s.api.core.v1.PersistentVolumeClaimSpec",
+    "#/definitions/v1.ResourceRequirements":        "#/definitions/io.k8s.api.core.v1.ResourceRequirements",
+    "#/definitions/v1.Time":                        "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time",
+    "#/definitions/v1.Toleration":                  "#/definitions/io.k8s.api.core.v1.Toleration",
+    "#/definitions/v1.TypedLocalObjectReference":   "#/definitions/io.k8s.api.core.v1.TypedLocalObjectReference",
+    "#/definitions/v1.TypedObjectReference":        "#/definitions/io.k8s.api.core.v1.TypedObjectReference",
+    "#/definitions/v1.VolumeResourceRequirements":  "#/definitions/io.k8s.api.core.v1.VolumeResourceRequirements"
+  } as $ref_map |
+
+  # Inject x-kubernetes-group-version-kind annotations
+  with_entries(
+    if $gvk_map[.key] then
+      .value["x-kubernetes-group-version-kind"] = $gvk_map[.key]
+    else . end
+  ) |
+
+  # Fix $ref pointers using explicit mapping
+  walk(
+    if type == "string" and $ref_map[.] then $ref_map[.]
+    else . end
+  )
+' "$DEFS_FILE" > "${DEFS_FILE}.tmp" && mv "${DEFS_FILE}.tmp" "$DEFS_FILE"
+
+ANNOTATED=$(jq '[.[] | select(has("x-kubernetes-group-version-kind"))] | length' "$DEFS_FILE")
+TOTAL=$(jq 'length' "$DEFS_FILE")
+STALE_REFS=$(jq -r '[.. | strings | select(startswith("#/definitions/v1."))] | length' "$DEFS_FILE")
+echo "Done. $ANNOTATED/$TOTAL definitions annotated. $STALE_REFS stale v1.* refs remaining."

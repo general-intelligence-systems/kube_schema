@@ -5,7 +5,7 @@
     "properties": {
       "affinity": {
         "description": "affinity enables pod affinity/anti-affinity placement expanding the types of constraints that can be expressed with nodeSelector. affinity is going to be applied to the relevant kind of pods in parallel with nodeSelector See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity",
-        "$ref": "#/definitions/v1.Affinity"
+        "$ref": "#/definitions/io.k8s.api.core.v1.Affinity"
       },
       "nodeSelector": {
         "description": "nodeSelector is the node selector applied to the relevant kind of pods It specifies a map of key-value pairs: for the pod to be eligible to run on a node, the node must have each of the indicated key-value pairs as labels (it can have additional labels as well). See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector",
@@ -20,7 +20,7 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1.Toleration"
+          "$ref": "#/definitions/io.k8s.api.core.v1.Toleration"
         }
       }
     }
@@ -42,7 +42,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "default": {},
@@ -52,7 +52,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.CDIStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "CDI"
+      }
+    ]
   },
   "v1beta1.CDICertConfig": {
     "description": "CDICertConfig has the CertConfigs for CDI",
@@ -89,7 +96,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "default": {},
@@ -99,7 +106,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.CDIConfigStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "CDIConfig"
+      }
+    ]
   },
   "v1beta1.CDIConfigList": {
     "description": "CDIConfigList provides the needed parameters to do request a list of CDIConfigs from the system",
@@ -127,7 +141,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ListMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
       }
     }
   },
@@ -157,7 +171,7 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1.LocalObjectReference"
+          "$ref": "#/definitions/io.k8s.api.core.v1.LocalObjectReference"
         }
       },
       "importProxy": {
@@ -179,7 +193,7 @@
       },
       "podResourceRequirements": {
         "description": "ResourceRequirements describes the compute resource requirements.",
-        "$ref": "#/definitions/v1.ResourceRequirements"
+        "$ref": "#/definitions/io.k8s.api.core.v1.ResourceRequirements"
       },
       "preallocation": {
         "description": "Preallocation controls whether storage for DataVolumes should be allocated in advance.",
@@ -205,7 +219,7 @@
     "properties": {
       "defaultPodResourceRequirements": {
         "description": "ResourceRequirements describes the compute resource requirements.",
-        "$ref": "#/definitions/v1.ResourceRequirements"
+        "$ref": "#/definitions/io.k8s.api.core.v1.ResourceRequirements"
       },
       "filesystemOverhead": {
         "description": "FilesystemOverhead describes the space reserved for overhead when using Filesystem volumes. A percentage value is between 0 and 1",
@@ -216,7 +230,7 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1.LocalObjectReference"
+          "$ref": "#/definitions/io.k8s.api.core.v1.LocalObjectReference"
         }
       },
       "importProxy": {
@@ -267,7 +281,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ListMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
       }
     }
   },
@@ -329,7 +343,7 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1.Condition"
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Condition"
         }
       },
       "observedVersion": {
@@ -355,11 +369,11 @@
     "properties": {
       "duration": {
         "description": "The requested 'duration' (i.e. lifetime) of the Certificate.",
-        "$ref": "#/definitions/v1.Duration"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Duration"
       },
       "renewBefore": {
         "description": "The amount of time before the currently issued certificate's `notAfter` time that we will begin to attempt to renew the certificate.",
-        "$ref": "#/definitions/v1.Duration"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Duration"
       }
     }
   },
@@ -369,7 +383,7 @@
     "properties": {
       "affinity": {
         "description": "affinity enables pod affinity/anti-affinity placement expanding the types of constraints that can be expressed with nodeSelector. affinity is going to be applied to the relevant kind of pods in parallel with nodeSelector See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity",
-        "$ref": "#/definitions/v1.Affinity"
+        "$ref": "#/definitions/io.k8s.api.core.v1.Affinity"
       },
       "apiServerReplicas": {
         "description": "ApiserverReplicas set Replicas for cdi-apiserver",
@@ -394,7 +408,7 @@
         "type": "array",
         "items": {
           "default": {},
-          "$ref": "#/definitions/v1.Toleration"
+          "$ref": "#/definitions/io.k8s.api.core.v1.Toleration"
         }
       },
       "uploadProxyReplicas": {
@@ -490,7 +504,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "default": {},
@@ -500,7 +514,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.DataImportCronStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "DataImportCron"
+      }
+    ]
   },
   "v1beta1.DataImportCronCondition": {
     "description": "DataImportCronCondition represents the state of a data import cron condition",
@@ -511,10 +532,10 @@
     ],
     "properties": {
       "lastHeartbeatTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "lastTransitionTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "message": {
         "type": "string"
@@ -558,7 +579,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ListMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
       }
     }
   },
@@ -626,11 +647,11 @@
       },
       "lastExecutionTimestamp": {
         "description": "LastExecutionTimestamp is the time of the last polling",
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "lastImportTimestamp": {
         "description": "LastImportTimestamp is the time of the last import",
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "lastImportedPVC": {
         "description": "LastImportedPVC is the last imported PVC",
@@ -659,7 +680,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "default": {},
@@ -669,7 +690,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.DataSourceStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "DataSource"
+      }
+    ]
   },
   "v1beta1.DataSourceCondition": {
     "description": "DataSourceCondition represents the state of a data source condition",
@@ -680,10 +708,10 @@
     ],
     "properties": {
       "lastHeartbeatTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "lastTransitionTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "message": {
         "type": "string"
@@ -727,7 +755,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ListMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
       }
     }
   },
@@ -815,7 +843,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "default": {},
@@ -825,7 +853,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.DataVolumeStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "DataVolume"
+      }
+    ]
   },
   "v1beta1.DataVolumeBlankImage": {
     "description": "DataVolumeBlankImage provides the parameters to create a new raw blank image for the PVC",
@@ -860,10 +895,10 @@
     ],
     "properties": {
       "lastHeartbeatTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "lastTransitionTime": {
-        "$ref": "#/definitions/v1.Time"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
       },
       "message": {
         "type": "string"
@@ -907,7 +942,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ListMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
       }
     }
   },
@@ -1223,7 +1258,7 @@
       },
       "pvc": {
         "description": "PVC is the PVC specification",
-        "$ref": "#/definitions/v1.PersistentVolumeClaimSpec"
+        "$ref": "#/definitions/io.k8s.api.core.v1.PersistentVolumeClaimSpec"
       },
       "serviceAccountName": {
         "description": "ServiceAccountName for Importer and Uploader pod",
@@ -1400,20 +1435,20 @@
       },
       "dataSource": {
         "description": "This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source. If the AnyVolumeDataSource feature gate is enabled, this field will always have the same contents as the DataSourceRef field.",
-        "$ref": "#/definitions/v1.TypedLocalObjectReference"
+        "$ref": "#/definitions/io.k8s.api.core.v1.TypedLocalObjectReference"
       },
       "dataSourceRef": {
         "description": "Specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any local object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the DataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, both fields (DataSource and DataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. There are two important differences between DataSource and DataSourceRef: * While DataSource only allows two specific types of objects, DataSourceRef allows any non-core object, as well as PersistentVolumeClaim objects. * While DataSource ignores disallowed values (dropping them), DataSourceRef preserves all values, and generates an error if a disallowed value is specified. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.",
-        "$ref": "#/definitions/v1.TypedObjectReference"
+        "$ref": "#/definitions/io.k8s.api.core.v1.TypedObjectReference"
       },
       "resources": {
         "description": "Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources",
         "default": {},
-        "$ref": "#/definitions/v1.VolumeResourceRequirements"
+        "$ref": "#/definitions/io.k8s.api.core.v1.VolumeResourceRequirements"
       },
       "selector": {
         "description": "A label query over volumes to consider for binding.",
-        "$ref": "#/definitions/v1.LabelSelector"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector"
       },
       "storageClassName": {
         "description": "Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1",
@@ -1491,7 +1526,7 @@
       },
       "metadata": {
         "default": {},
-        "$ref": "#/definitions/v1.ObjectMeta"
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
       },
       "spec": {
         "description": "Spec contains the parameters of the request",
@@ -1503,7 +1538,14 @@
         "default": {},
         "$ref": "#/definitions/v1beta1.UploadTokenRequestStatus"
       }
-    }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "upload.cdi.kubevirt.io",
+        "version": "v1beta1",
+        "kind": "UploadTokenRequest"
+      }
+    ]
   },
   "v1beta1.UploadTokenRequestSpec": {
     "description": "UploadTokenRequestSpec defines the parameters of the token request",

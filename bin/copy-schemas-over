@@ -12,4 +12,5 @@ git ls-tree --name-only schemas2 data/k8s.io/ | while read -r path; do
 done
 
 bin/create-kubevirt-x-values
+bin/create-cdi-x-values
 
