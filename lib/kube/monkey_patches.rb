@@ -33,4 +33,22 @@ class Hash
   def self.vivify(&block)
     new.tap { |h| h.instance_exec(&block) }
   end
+
+  # Deep-stringify keys so symbol keys don't leak into YAML as `:key:`.
+  def to_yaml(*)
+    Hash._deep_stringify_keys(self).then { |h| Psych.dump(h) }
+  end
+
+  def self._deep_stringify_keys(obj)
+    case obj
+    when Hash
+      obj.each_with_object({}) do |(k, v), result|
+        result[k.to_s] = _deep_stringify_keys(v)
+      end
+    when Array
+      obj.map { |v| _deep_stringify_keys(v) }
+    else
+      obj
+    end
+  end
 end
