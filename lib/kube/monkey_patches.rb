@@ -1,4 +1,3 @@
-# https://github.com/mickey/black-hole-struct/blob/master/lib/black_hole_struct.rb
 class Hash
   def method_missing(name, *args)
     key = name.to_s

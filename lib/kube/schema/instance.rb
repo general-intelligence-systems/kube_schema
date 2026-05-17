@@ -38,29 +38,52 @@ module Kube
         @version = version
       end
 
-      # Look up a resource by kind (e.g. "Deployment", "NetworkPolicy").
+      # Look up a resource by kind or full GVK string.
+      #
+      # Accepts:
+      #   instance["Deployment"]                      — kind-only lookup
+      #   instance["apps/v1/Deployment"]              — group/version/kind
+      #   instance["v1/Pod"]                          — version/kind (core, empty group)
+      #   instance["networking.k8s.io/v1/Ingress"]    — fully qualified
+      #
       # Returns a class that inherits from Kube::Schema::Resource.
       #
       # Custom schemas registered via Kube::Schema.register take precedence
-      # over built-in definitions, allowing users to override or extend the
-      # schema for any kind.
-      def [](kind)
-        @resource_classes[kind] ||= begin
-          # Custom schemas win over built-in definitions.
-          custom = find_custom_entry(kind)
-          if custom
-            build_resource_class(custom[:schema], custom[:defaults])
-          else
-            entry = find_gvk_entry(kind)
+      # over built-in definitions (kind-only lookups only).
+      def [](input)
+        @resource_classes[input] ||= begin
+          if input.include?("/")
+            parts = input.split("/")
 
-            if entry.nil?
-              raise "No resource schema found for #{kind}!" \
-                "\nUse #list_resources to see available kinds for v#{version}."
+            case parts.length
+            when 3
+              group, version, kind = parts
+            when 2
+              group = ""
+              version, kind = parts
+            else
+              raise "Invalid GVK format: #{input.inspect}." \
+                "\nExpected \"group/version/kind\" or \"version/kind\"."
             end
 
-            ref_schema = schemer.ref("#/definitions/#{entry[:definition_key]}")
-            build_resource_class(ref_schema, entry[:defaults].freeze)
+            entry = find_gvk_entry_by_full_gvk(group, version, kind)
+          else
+            # Kind-only lookup — custom schemas take precedence.
+            custom = find_custom_entry(input)
+            if custom
+              return build_resource_class(custom[:schema], custom[:defaults])
+            end
+
+            entry = find_gvk_entry(input)
           end
+
+          if entry.nil?
+            raise "No resource schema found for #{input.inspect}!" \
+              "\nUse #list_resources to see available kinds for v#{@version}."
+          end
+
+          ref_schema = schemer.ref("#/definitions/#{entry[:definition_key]}")
+          build_resource_class(ref_schema, entry[:defaults].freeze)
         end
       end
 
@@ -167,7 +190,7 @@ module Kube
         #   }
         def gvk_index
           @gvk_index ||= begin
-            index = {}
+            index = Hash.new { |h, k| h[k] = [] }
 
             schemer.value.fetch("definitions", {}).each do |key, definition|
               gvks = definition["x-kubernetes-group-version-kind"]
@@ -179,7 +202,7 @@ module Kube
                 kind = gvk["kind"]
                 api_version = group.empty? ? version : "#{group}/#{version}"
 
-                index[kind] = {
+                index[kind] << {
                   definition_key: key,
                   group: group,
                   version: version,
@@ -197,15 +220,27 @@ module Kube
         end
 
         # Find a GVK entry by kind name (case-insensitive).
-        # Returns the full entry hash or nil.
+        # Returns the first matching entry hash or nil.
         def find_gvk_entry(kind)
-          return gvk_index[kind] if gvk_index.key?(kind)
+          entries = gvk_index[kind]
+          return entries.first if entries && !entries.empty?
 
           gvk_index.each do |k, v|
-            return v if k.downcase == kind.downcase
+            return v.first if k.downcase == kind.downcase
           end
 
           nil
+        end
+
+        # Find a GVK entry by exact group, version, and kind.
+        # Returns the matching entry hash or nil.
+        def find_gvk_entry_by_full_gvk(group, version, kind)
+          entries = gvk_index[kind]
+          return nil if entries.nil? || entries.empty?
+
+          entries.find do |entry|
+            entry[:group] == group && entry[:version] == version
+          end
         end
 
         # Find a custom schema entry by kind (case-insensitive).
@@ -391,6 +426,46 @@ if __FILE__ == $0
       end
     end
 
+    describe "#[] with full GVK string" do
+      it "resolves apps/v1/Deployment" do
+        klass = instance["apps/v1/Deployment"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
+      end
+
+      it "resolves v1/Pod (core resource, empty group)" do
+        klass = instance["v1/Pod"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "v1", "kind" => "Pod" })
+      end
+
+      it "resolves networking.k8s.io/v1/Ingress" do
+        klass = instance["networking.k8s.io/v1/Ingress"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "networking.k8s.io/v1", "kind" => "Ingress" })
+      end
+
+      it "resolves kubevirt.io/v1/VirtualMachine" do
+        klass = instance["kubevirt.io/v1/VirtualMachine"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" })
+      end
+
+      it "raises for invalid GVK format (too many slashes)" do
+        expect { instance["a/b/c/d"] }.to raise_error(RuntimeError, /Invalid GVK format/)
+      end
+
+      it "raises for non-existent GVK" do
+        expect { instance["fake.io/v99/Blah"] }.to raise_error(RuntimeError, /No resource schema found/)
+      end
+
+      it "caches GVK lookups" do
+        a = instance["apps/v1/Deployment"]
+        b = instance["apps/v1/Deployment"]
+        expect(a).to be(b)
+      end
+    end
+
     describe "#list_resources" do
       it "returns a sorted array of kind strings" do
         kinds = instance.list_resources
@@ -450,6 +525,52 @@ if __FILE__ == $0
           ]
         }
         expect { resource.to_yaml }.not_to raise_error
+      end
+    end
+
+    describe "CloudnativePG schemas" do
+      it "resolves Cluster by kind" do
+        klass = instance["Cluster"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" })
+      end
+
+      it "resolves Cluster by full GVK string" do
+        klass = instance["postgresql.cnpg.io/v1/Cluster"]
+        expect(klass).to be < Kube::Schema::Resource
+        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" })
+      end
+
+      it "includes Cluster in list_resources" do
+        expect(instance.list_resources).to include("Cluster")
+      end
+
+      it "resolves Backup" do
+        klass = instance["postgresql.cnpg.io/v1/Backup"]
+        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Backup" })
+      end
+
+      it "resolves ScheduledBackup" do
+        klass = instance["postgresql.cnpg.io/v1/ScheduledBackup"]
+        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "ScheduledBackup" })
+      end
+
+      it "resolves Pooler" do
+        klass = instance["postgresql.cnpg.io/v1/Pooler"]
+        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Pooler" })
+      end
+
+      it "can instantiate a Cluster with the block DSL" do
+        resource = instance["postgresql.cnpg.io/v1/Cluster"].new {
+          metadata.name = "pg-cluster"
+          metadata.namespace = "databases"
+          spec.instances = 3
+          spec.storage.size = "10Gi"
+        }
+        expect(resource.to_h[:apiVersion]).to eq("postgresql.cnpg.io/v1")
+        expect(resource.to_h[:kind]).to eq("Cluster")
+        expect(resource.to_h[:metadata][:name]).to eq("pg-cluster")
+        expect(resource.to_h[:spec][:instances]).to eq(3)
       end
     end
 

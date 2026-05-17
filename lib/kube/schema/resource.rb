@@ -352,7 +352,6 @@ if __FILE__ == $0
 
         expect(yaml).to include("kind: Pod")
         expect(yaml).to include("apiVersion: v1")
-        expect(yaml).not_to include("BlackHoleStruct")
         expect(yaml).not_to include("!ruby/object")
       end
 
@@ -435,7 +434,6 @@ if __FILE__ == $0
           yaml = deployment.to_yaml
 
           expect(yaml).not_to include("!ruby/object")
-          expect(yaml).not_to include("BlackHoleStruct")
           expect(yaml).not_to include("table:")
         end
 
