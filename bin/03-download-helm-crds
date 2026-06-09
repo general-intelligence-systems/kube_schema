@@ -7,6 +7,7 @@
 # This is needed for projects like agentgateway that distribute CRDs exclusively
 # as OCI Helm charts rather than raw YAML manifests.
 
+require 'shellwords'
 require 'yaml'
 
 GEM_ROOT = File.expand_path("..", __dir__)
@@ -16,15 +17,32 @@ ALL_CRDS = File.join(GEM_ROOT, "data", "crds", "00-all-crds.yaml")
 
 charts = YAML.load_file(File.join(GEM_ROOT, 'data/helm-crd-list.yaml'))
 
+# Track which classic Helm repos we've already `helm repo add`-ed this run.
+added_repos = {}
+
 charts.each do |chart|
   name      = chart['name']
-  repo      = chart['chart']
+  ref       = chart['chart']
+  repo      = chart['repo']
   version   = chart['version']
   namespace = chart['namespace'] || 'default'
 
-  puts "Rendering #{name} (#{repo} @ #{version})..."
+  # Classic Helm repos must be added before they can be templated by name;
+  # OCI charts (chart: oci://...) carry their location in the ref itself.
+  if repo
+    unless added_repos[repo]
+      puts "Adding helm repo #{name} -> #{repo}..."
+      `helm repo add #{name.shellescape} #{repo.shellescape} 2>&1`
+      added_repos[repo] = name
+    end
+    ref = "#{added_repos[repo]}/#{ref}"
+  end
 
-  output = `helm template #{name} #{repo} --version #{version} --namespace #{namespace} 2>&1`
+  puts "Rendering #{name} (#{ref} @ #{version})..."
+
+  # --include-crds is required for charts that ship CRDs in their crds/ dir
+  # (e.g. kubescape); without it those definitions are silently dropped.
+  output = `helm template #{name} #{ref} --version #{version} --namespace #{namespace} --include-crds 2>&1`
 
   unless $?.success?
     warn "Failed to render #{name}:\n#{output}"

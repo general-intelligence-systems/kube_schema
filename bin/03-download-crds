@@ -12,6 +12,13 @@ Sync do
   YAML.load_file(File.join(GEM_ROOT, 'data/crd-list.yaml')).then do |urls|
     urls.each do |url|
       Async::HTTP::Internet.get(url) do |response|
+        # Fail loudly on a bad URL — otherwise the error body (e.g. GitHub's
+        # "404: Not Found") gets concatenated into the CRD bundle as junk and
+        # the missing CRDs vanish silently from the generated schema.
+        unless response.success?
+          warn "Failed to download CRD (#{response.status}): #{url}"
+          exit 1
+        end
         results << response.read
       end
     end

@@ -3,7 +3,8 @@
 #
 # Fields:
 #   name:      release name passed to `helm template`
-#   chart:     OCI or repo chart reference
+#   chart:     OCI ref, or chart name when `repo` is set
+#   repo:      classic Helm repo URL (omit for OCI charts referenced fully in `chart`)
 #   version:   chart version
 #   namespace: namespace for template rendering (optional, defaults to "default")
 
@@ -12,3 +13,11 @@
   chart: oci://cr.agentgateway.dev/charts/agentgateway-crds
   version: v1.1.0
   namespace: agentgateway-system
+
+# Kubescape (CRDs ship inside the chart's crds/ dir + alert subcharts;
+# requires --include-crds, handled by bin/03-download-helm-crds)
+- name: kubescape
+  chart: kubescape-operator
+  repo: https://kubescape.github.io/helm-charts
+  version: 1.40.2
+  namespace: metrics

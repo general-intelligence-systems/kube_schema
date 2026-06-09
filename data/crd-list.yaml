@@ -83,8 +83,8 @@
 - "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/refs/heads/main/config/crd/bases/postgresql.cnpg.io_scheduledbackups.yaml"
 - "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/refs/heads/main/config/crd/bases/postgresql.cnpg.io_subscriptions.yaml"
 
-# VictoriaMetrics Operator
-- "https://raw.githubusercontent.com/VictoriaMetrics/operator/refs/heads/main/config/crd/overlay/crd.yaml"
+# VictoriaMetrics Operator (default branch is master, not main)
+- "https://raw.githubusercontent.com/VictoriaMetrics/operator/refs/heads/master/config/crd/overlay/crd.yaml"
 
 # Perses
 - "https://raw.githubusercontent.com/perses/perses-operator/refs/heads/main/config/crd/bases/perses.dev_perses.yaml"
