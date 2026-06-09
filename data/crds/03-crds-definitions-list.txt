@@ -765,6 +765,12 @@ io.k8s.kube-aggregator.pkg.apis.apiregistration.v1.APIServiceList
 io.k8s.kube-aggregator.pkg.apis.apiregistration.v1.APIServiceSpec
 io.k8s.kube-aggregator.pkg.apis.apiregistration.v1.APIServiceStatus
 io.k8s.kube-aggregator.pkg.apis.apiregistration.v1.ServiceReference
+io.k8s.metacontroller.v1alpha1.CompositeController
+io.k8s.metacontroller.v1alpha1.CompositeControllerList
+io.k8s.metacontroller.v1alpha1.ControllerRevision
+io.k8s.metacontroller.v1alpha1.ControllerRevisionList
+io.k8s.metacontroller.v1alpha1.DecoratorController
+io.k8s.metacontroller.v1alpha1.DecoratorControllerList
 io.k8s.networking.gateway.v1.GRPCRoute
 io.k8s.networking.gateway.v1.GRPCRouteList
 io.k8s.networking.gateway.v1.Gateway

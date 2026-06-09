@@ -196,6 +196,12 @@ io.external-secrets.v1.SecretStore
 io.external-secrets.v1.SecretStoreList
 io.k8s.externaldns.v1alpha1.DNSEndpoint
 io.k8s.externaldns.v1alpha1.DNSEndpointList
+io.k8s.metacontroller.v1alpha1.CompositeController
+io.k8s.metacontroller.v1alpha1.CompositeControllerList
+io.k8s.metacontroller.v1alpha1.ControllerRevision
+io.k8s.metacontroller.v1alpha1.ControllerRevisionList
+io.k8s.metacontroller.v1alpha1.DecoratorController
+io.k8s.metacontroller.v1alpha1.DecoratorControllerList
 io.k8s.networking.gateway.v1beta1.Gateway
 io.k8s.networking.gateway.v1beta1.GatewayClass
 io.k8s.networking.gateway.v1beta1.GatewayClassList

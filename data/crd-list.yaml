@@ -86,6 +86,9 @@
 # VictoriaMetrics Operator (default branch is master, not main)
 - "https://raw.githubusercontent.com/VictoriaMetrics/operator/refs/heads/master/config/crd/overlay/crd.yaml"
 
+# Metacontroller
+- "https://raw.githubusercontent.com/metacontroller/metacontroller/master/manifests/production/metacontroller-crds-v1.yaml"
+
 # Perses
 - "https://raw.githubusercontent.com/perses/perses-operator/refs/heads/main/config/crd/bases/perses.dev_perses.yaml"
 - "https://raw.githubusercontent.com/perses/perses-operator/refs/heads/main/config/crd/bases/perses.dev_persesdashboards.yaml"
