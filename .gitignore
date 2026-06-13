@@ -8,3 +8,5 @@ kubeconfig.yaml
 /vendor/bundle
 bin/kwok
 bin/kwokctl
+*.swp
+*.swo
