@@ -1,6 +1,12 @@
 # cdi-operator
 - https://raw.githubusercontent.com/kubevirt/cdi-operator/refs/heads/master/deploy/crd.yaml
 
+# Traefik (traefik.io/v1alpha1: Middleware, IngressRoute, TLSOption, ...).
+# k3s bundles traefik but installs it as an async addon, so its CRDs never land
+# in the controlled apply set and get dropped by the comm -23 baseline diff in
+# bin/04-get-crd-json. Listing the published bundle here applies them explicitly.
+- https://raw.githubusercontent.com/traefik/traefik/v3.3/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+
 # Gateway API
 - "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/refs/tags/v1.5.1/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml"
 - "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/refs/tags/v1.5.1/config/crd/standard/gateway.networking.k8s.io_gateways.yaml"

@@ -24,7 +24,10 @@
           ];
 
           shellHook = ''
-            export GEM_HOME="$PWD/.gem"
+            # Pin GEM_HOME per ruby version so native extensions built against
+            # one ruby (e.g. a different project's 3.4.9) never collide with
+            # this shell's ruby (${ruby.version}).
+            export GEM_HOME="$HOME/.gem-${ruby.version}"
             export GEM_PATH="$GEM_HOME"
             export PATH="$GEM_HOME/bin:$PATH"
             export BUNDLE_PATH="$GEM_HOME"
