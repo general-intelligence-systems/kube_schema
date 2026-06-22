@@ -66,6 +66,12 @@ module Kube
                 "\nExpected \"group/version/kind\" or \"version/kind\"."
             end
 
+            # Custom schemas take precedence on full-GVK lookups too.
+            custom = find_custom_entry_by_gvk(group, version, kind)
+            if custom
+              return build_resource_class(custom[:schema], custom[:defaults])
+            end
+
             entry = find_gvk_entry_by_full_gvk(group, version, kind)
           else
             # Kind-only lookup — custom schemas take precedence.
@@ -92,7 +98,8 @@ module Kube
       #
       # @return [Array<String>] sorted kind names
       def list_resources
-        (gvk_index.keys + Schema.custom_schemas.keys).uniq.sort
+        custom_kinds = Schema.custom_schemas.values.map { |v| v[:defaults]["kind"] }
+        (gvk_index.keys + custom_kinds).uniq.sort
       end
 
       # Look up a sub-spec definition by short name (e.g. "Container",
@@ -243,17 +250,23 @@ module Kube
           end
         end
 
-        # Find a custom schema entry by kind (case-insensitive).
+        # Find a custom schema entry by kind (case-insensitive). The registry
+        # is keyed by full GVK, so match on each entry's recorded kind. When
+        # several groups register the same kind, the first registered wins.
         # Returns the { schema:, defaults: } hash or nil.
         def find_custom_entry(kind)
           registry = Schema.custom_schemas
-          return registry[kind] if registry.key?(kind)
-
-          registry.each do |k, v|
-            return v if k.downcase == kind.downcase
-          end
+          registry.each_value { |v| return v if v[:defaults]["kind"] == kind }
+          registry.each_value { |v| return v if v[:defaults]["kind"].casecmp?(kind) }
 
           nil
+        end
+
+        # Find a custom schema entry by exact group, version, and kind.
+        # Returns the { schema:, defaults: } hash or nil.
+        def find_custom_entry_by_gvk(group, version, kind)
+          api_version = group.empty? ? version : "#{group}/#{version}"
+          Schema.custom_schemas["#{api_version}/#{kind}"]
         end
 
         # Build a Resource subclass from a JSONSchemer instance and defaults hash.
