@@ -74,7 +74,12 @@ module Kube
               "schema must be a Hash, a JSON string, or a file path — got #{schema.class}"
           end
 
-        @custom_schemas[kind] = {
+        # Key by full GVK ("group/version/Kind") so a registered CRD resolves
+        # on fully-qualified lookups (e.g. the api_version/kind path that
+        # Resource#rebuild reconstructs), not just kind-only lookups. Keying by
+        # bare kind also collided when two CRDs shared a kind across groups.
+        key = api_version ? "#{api_version}/#{kind}" : kind
+        @custom_schemas[key] = {
           schema: JSONSchemer.schema(parsed),
           defaults: { "apiVersion" => api_version, "kind" => kind }.freeze
         }
