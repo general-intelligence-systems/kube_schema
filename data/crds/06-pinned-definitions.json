@@ -1,0 +1,186 @@
+{
+  "io.k8s.apimachinery.pkg.apis.meta.v1.Duration": {
+    "description": "Duration is a wrapper around time.Duration which supports correct marshaling to YAML and JSON. In particular, it marshals into strings, which can be used as map keys in json.",
+    "type": "string"
+  },
+  "io.k8s.metrics.pkg.apis.metrics.v1beta1.ContainerMetrics": {
+    "description": "ContainerMetrics sets resource usage metrics of a container.",
+    "type": "object",
+    "required": [
+      "name",
+      "usage"
+    ],
+    "properties": {
+      "name": {
+        "description": "Container name corresponding to the one from pod.spec.containers.",
+        "type": "string"
+      },
+      "usage": {
+        "description": "The memory usage is the memory working set.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+        }
+      }
+    }
+  },
+  "io.k8s.metrics.pkg.apis.metrics.v1beta1.NodeMetrics": {
+    "description": "NodeMetrics sets resource usage metrics of a node.",
+    "type": "object",
+    "required": [
+      "timestamp",
+      "window",
+      "usage"
+    ],
+    "properties": {
+      "apiVersion": {
+        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+        "type": "string"
+      },
+      "kind": {
+        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "type": "string"
+      },
+      "metadata": {
+        "description": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+      },
+      "timestamp": {
+        "description": "The following fields define time interval from which metrics were collected from the interval [Timestamp-Window, Timestamp].",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
+      },
+      "usage": {
+        "description": "The memory usage is the memory working set.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+        }
+      },
+      "window": {
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Duration"
+      }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "metrics.k8s.io",
+        "kind": "NodeMetrics",
+        "version": "v1beta1"
+      }
+    ]
+  },
+  "io.k8s.metrics.pkg.apis.metrics.v1beta1.NodeMetricsList": {
+    "description": "NodeMetricsList is a list of NodeMetrics.",
+    "type": "object",
+    "required": [
+      "items"
+    ],
+    "properties": {
+      "apiVersion": {
+        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+        "type": "string"
+      },
+      "items": {
+        "description": "List of node metrics.",
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/io.k8s.metrics.pkg.apis.metrics.v1beta1.NodeMetrics"
+        }
+      },
+      "kind": {
+        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "type": "string"
+      },
+      "metadata": {
+        "description": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
+      }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "metrics.k8s.io",
+        "kind": "NodeMetricsList",
+        "version": "v1beta1"
+      }
+    ]
+  },
+  "io.k8s.metrics.pkg.apis.metrics.v1beta1.PodMetrics": {
+    "description": "PodMetrics sets resource usage metrics of a pod.",
+    "type": "object",
+    "required": [
+      "timestamp",
+      "window",
+      "containers"
+    ],
+    "properties": {
+      "apiVersion": {
+        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+        "type": "string"
+      },
+      "containers": {
+        "description": "Metrics for all containers are collected within the same time window.",
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/io.k8s.metrics.pkg.apis.metrics.v1beta1.ContainerMetrics"
+        },
+        "x-kubernetes-list-type": "atomic"
+      },
+      "kind": {
+        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "type": "string"
+      },
+      "metadata": {
+        "description": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+      },
+      "timestamp": {
+        "description": "The following fields define time interval from which metrics were collected from the interval [Timestamp-Window, Timestamp].",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Time"
+      },
+      "window": {
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Duration"
+      }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "metrics.k8s.io",
+        "kind": "PodMetrics",
+        "version": "v1beta1"
+      }
+    ]
+  },
+  "io.k8s.metrics.pkg.apis.metrics.v1beta1.PodMetricsList": {
+    "description": "PodMetricsList is a list of PodMetrics.",
+    "type": "object",
+    "required": [
+      "items"
+    ],
+    "properties": {
+      "apiVersion": {
+        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+        "type": "string"
+      },
+      "items": {
+        "description": "List of pod metrics.",
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/io.k8s.metrics.pkg.apis.metrics.v1beta1.PodMetrics"
+        }
+      },
+      "kind": {
+        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "type": "string"
+      },
+      "metadata": {
+        "description": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+        "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
+      }
+    },
+    "x-kubernetes-group-version-kind": [
+      {
+        "group": "metrics.k8s.io",
+        "kind": "PodMetricsList",
+        "version": "v1beta1"
+      }
+    ]
+  }
+}

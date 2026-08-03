@@ -25,6 +25,7 @@ Three-phase approach for third-party CRD schemas (Gateway API, Argo, cert-manage
 - **CRD list (raw YAML):** `data/crd-list.yaml`
 - **CRD list (Helm charts):** `data/helm-crd-list.yaml`
 - **Intermediate outputs:** `data/crds/00-all-crds.yaml`, `data/crds/01-k8s-definitions-list.txt`, `data/crds/02-full-schema.json`, `data/crds/03-crds-definitions-list.txt`, `data/crds/04-crd-only-definitions-list.txt`
+- **Pinned extras:** `data/crds/06-pinned-definitions.json` — definitions the k3s extraction can no longer produce but that the gem has already shipped (`metrics.k8s.io` types, served by the metrics-server addon, which newer k3s images don't surface in `/openapi/v2`). Merged over the extracted set at the end of `bin/04-get-crd-json` so they don't silently vanish on regeneration.
 - **Final output:** `data/crds/05-crd-only-definitions.json`
 
 To add a new CRD source, either append its raw YAML URL to `data/crd-list.yaml`, or if the CRDs are only available as a Helm chart, add an entry to `data/helm-crd-list.yaml`.

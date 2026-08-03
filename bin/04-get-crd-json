@@ -31,3 +31,13 @@ jq --rawfile keys data/crds/04-crd-only-definitions-list.txt \
    .definitions | with_entries(select(IN($k[]; .key)))' \
   data/crds/02-full-schema.json \
   > data/crds/05-crd-only-definitions.json
+
+# Merge in definitions that the k3s extraction can no longer produce but that
+# the gem has already shipped (metrics.k8s.io is served by the metrics-server
+# addon, which newer k3s images don't surface in /openapi/v2). Without this they
+# would silently disappear from the published schema on every regeneration.
+jq -s '.[0] * .[1]' \
+  data/crds/05-crd-only-definitions.json \
+  data/crds/06-pinned-definitions.json \
+  > data/crds/05-crd-only-definitions.json.tmp \
+  && mv data/crds/05-crd-only-definitions.json.tmp data/crds/05-crd-only-definitions.json

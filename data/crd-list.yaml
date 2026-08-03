@@ -15,10 +15,10 @@
 - "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/refs/tags/v1.5.1/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml"
 
 # Gateway API Inference
-- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencepoolimports.yaml"
-- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferenceobjectives.yaml"
-- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.x-k8s.io_inferencemodelrewrites.yaml"
-- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/heads/main/config/crd/bases/inference.networking.k8s.io_inferencepools.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/tags/v1.5.0/config/crd/bases/inference.networking.x-k8s.io_inferencepoolimports.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/tags/v1.5.0/config/crd/bases/inference.networking.x-k8s.io_inferenceobjectives.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/tags/v1.5.0/config/crd/bases/inference.networking.x-k8s.io_inferencemodelrewrites.yaml"
+- "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api-inference-extension/refs/tags/v1.5.0/config/crd/bases/inference.networking.k8s.io_inferencepools.yaml"
 
 # External DNS
 - "https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/heads/master/charts/external-dns/crds/dnsendpoints.externaldns.k8s.io.yaml"
@@ -128,3 +128,9 @@
 - "https://raw.githubusercontent.com/cilium/cilium/v1.19.4/pkg/k8s/apis/cilium.io/client/crds/v2alpha1/ciliumgatewayclassconfigs.yaml"
 - "https://raw.githubusercontent.com/cilium/cilium/v1.19.4/pkg/k8s/apis/cilium.io/client/crds/v2alpha1/ciliuml2announcementpolicies.yaml"
 - "https://raw.githubusercontent.com/cilium/cilium/v1.19.4/pkg/k8s/apis/cilium.io/client/crds/v2alpha1/ciliumpodippools.yaml"
+
+# JuiceFS Operator
+- "https://raw.githubusercontent.com/juicedata/juicefs-operator/refs/tags/v0.8.5/config/crd/bases/juicefs.io_cachegroups.yaml"
+- "https://raw.githubusercontent.com/juicedata/juicefs-operator/refs/tags/v0.8.5/config/crd/bases/juicefs.io_cronsyncs.yaml"
+- "https://raw.githubusercontent.com/juicedata/juicefs-operator/refs/tags/v0.8.5/config/crd/bases/juicefs.io_syncs.yaml"
+- "https://raw.githubusercontent.com/juicedata/juicefs-operator/refs/tags/v0.8.5/config/crd/bases/juicefs.io_warmups.yaml"
