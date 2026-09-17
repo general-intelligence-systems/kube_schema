@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 This file starts at 1.10.0; for earlier releases see the git history.
 
+## [1.11.0]
+
+### Added
+
+- `Kube::Schema.api_groups` and `Instance#api_groups` — every API group known
+  to the schema (built-in types, the merged CRD bundles, and schemas
+  registered via `.register`), sorted and deduplicated, with the core group
+  as `""`. Intended for consumers that need to distinguish group/resource
+  from core resource/subresource strings — e.g. building RBAC rules — without
+  hardcoding a group list.
+
 ## [1.10.0]
 
 ### Added

@@ -102,6 +102,21 @@ module Kube
         (gvk_index.keys + custom_kinds).uniq.sort
       end
 
+      # All API groups known to this version, including any custom schemas
+      # registered via Kube::Schema.register. The core API group is the
+      # empty string.
+      #
+      #   instance.api_groups # => ["", "apps", "argoproj.io", "batch", ...]
+      #
+      # @return [Array<String>] sorted, deduplicated group names
+      def api_groups
+        custom_groups = Schema.custom_schemas.keys.filter_map do |key|
+          parts = key.split("/")
+          parts.first if parts.size == 3
+        end
+        (gvk_index.values.flatten.map { |entry| entry[:group] } + custom_groups).uniq.sort
+      end
+
       # Look up a sub-spec definition by short name (e.g. "Container",
       # "ContainerPort", "Volume", "Probe"). Returns a class that
       # inherits from Kube::Schema::SubSpec.
@@ -486,6 +501,32 @@ if __FILE__ == $0
         expect(kinds).not_to be_empty
         expect(kinds).to include("Deployment", "Service", "Namespace", "Pod")
         expect(kinds).to eq(kinds.sort)
+      end
+    end
+
+    describe "#api_groups" do
+      it "returns a sorted array of group names including the core group" do
+        groups = instance.api_groups
+        expect(groups).to be_an(Array)
+        expect(groups).to eq(groups.sort)
+        expect(groups).to include("")
+      end
+
+      it "includes built-in groups, including ones without dots" do
+        expect(instance.api_groups).to include("apps", "batch", "rbac.authorization.k8s.io")
+      end
+
+      it "includes groups from the merged CRD definition bundles" do
+        expect(instance.api_groups).to include("kubevirt.io", "argoproj.io")
+      end
+
+      it "includes groups from registered custom schemas" do
+        Kube::Schema.register("TenantVmClaim",
+          schema: { "type" => "object" },
+          api_version: "tradeportal.ai/v1")
+        expect(instance.api_groups).to include("tradeportal.ai")
+      ensure
+        Kube::Schema.reset_custom_schemas!
       end
     end
 

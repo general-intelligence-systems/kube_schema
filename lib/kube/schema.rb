@@ -160,6 +160,16 @@ module Kube
         schema_versions.last
       end
 
+      # All API groups known to the default schema version, including any
+      # custom schemas registered via .register. The core group is "".
+      #
+      #   Kube::Schema.api_groups # => ["", "apps", "argoproj.io", "batch", ...]
+      #
+      # @return [Array<String>] sorted, deduplicated group names
+      def api_groups
+        self[schema_version || DEFAULT_VERSION].api_groups
+      end
+
       def has_version?(version)
         schema_versions.include?(version)
       end
@@ -312,6 +322,16 @@ if __FILE__ == $0
 
       it "returns false for an unknown version" do
         expect(Kube::Schema.has_version?("0.0.1")).to be false
+      end
+    end
+
+    describe ".api_groups" do
+      it "delegates to the default version's instance" do
+        expect(Kube::Schema.api_groups).to eq(Kube::Schema[Kube::Schema::DEFAULT_VERSION].api_groups)
+      end
+
+      it "includes core and built-in groups" do
+        expect(Kube::Schema.api_groups).to include("", "apps", "batch")
       end
     end
   end
