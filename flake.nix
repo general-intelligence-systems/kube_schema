@@ -10,29 +10,26 @@
   outputs = { self, nixpkgs, utils, mine }:
     utils.lib.eachDefaultSystem (system:
       let
-        # No mine.overlays.default: it overrides pkg-config, which stdenv
-        # splices, so the overlay rebuilds stdenv and all of nixpkgs from
-        # source. mine.inputs.nixpkgs.follows makes it redundant anyway.
+        # No mine.overlays.default: it used to override pkg-config, which stdenv
+        # splices, so the overlay rebuilt stdenv and all of nixpkgs from source.
+        # mine.inputs.nixpkgs.follows makes it redundant anyway.
         pkgs = nixpkgs.legacyPackages.${system};
-        ruby = pkgs.ruby_3_4;
+        lib = mine.lib.${system};
+
+        gems = lib.buildGemset {
+          name = "kube_schema";
+          src = ./.;
+        };
       in
       {
         # pkg-config, bundix, libyaml, openssl, overmind, tmux and `bundix -l`
         # come from mkRubyShell.
-        devShells.default = mine.lib.${system}.mkRubyShell {
+        devShells.default = lib.mkRubyShell {
           buildInputs = [
+            gems
+            gems.wrappedRuby
             pkgs.trufflehog
-            ruby
           ];
-
-          shellHook = ''
-            export GEM_HOME="$HOME/.gem-${ruby.version}"
-            export GEM_PATH="$GEM_HOME"
-            export PATH="$GEM_HOME/bin:$PATH"
-            export BUNDLE_GEMFILE="$PWD/Gemfile"
-            export BUNDLE_PATH="$GEM_HOME"
-            export BUNDLE_BIN="$GEM_HOME/bin"
-          '';
         };
       }
     );

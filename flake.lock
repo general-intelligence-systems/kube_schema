@@ -8,11 +8,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1790556091,
-        "narHash": "sha256-+kgvg6vuaxjEUUad6pL+pxa3LZFveq3XvWGSZ+Z9gOA=",
+        "lastModified": 1790610895,
+        "narHash": "sha256-sansiZlrb60MrGFzTXNCVVMTU5EsGM6KWvZkA/aNp14=",
         "owner": "n-at-han-k",
         "repo": "flake.nix",
-        "rev": "d023f40398596a5d80bf03e429c678a99b3f259a",
+        "rev": "0f3388742debac3e78751796f4568f441c0dee57",
         "type": "github"
       },
       "original": {
