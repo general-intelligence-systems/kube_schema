@@ -86,6 +86,9 @@ module Kube
         @resources.dup
       end
 
+      # Ruby pattern matching: `manifest => [Kube::Cluster["Deployment"], *]`.
+      def deconstruct = to_a
+
       # -------------------------------------------------------------------
       # File I/O
       # -------------------------------------------------------------------
@@ -295,6 +298,21 @@ if __FILE__ == $0
       it "returns 0 for an empty manifest" do
         manifest = described_class.new
         expect(manifest.size).to eq(0)
+      end
+    end
+
+    describe "pattern matching" do
+      it "destructures into an array of resources" do
+        manifest = described_class.new(resource_a, resource_b)
+        manifest => [Kube::Schema::Resource => first, *rest]
+
+        expect(first).to eq(resource_a)
+        expect(rest).to eq([resource_b])
+      end
+
+      it "enforces arity" do
+        manifest = described_class.new(resource_a, resource_b)
+        expect { manifest => [Kube::Schema::Resource] }.to raise_error(NoMatchingPatternError)
       end
     end
 

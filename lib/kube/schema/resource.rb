@@ -101,6 +101,11 @@ module Kube
         other.is_a?(Resource) && to_h == other.to_h
       end
 
+      # Ruby pattern matching: `resource => {metadata: {name:}}`.
+      # to_h is already plain nested symbol-keyed Hashes, so nested
+      # patterns work all the way down for free.
+      def deconstruct_keys(keys) = to_h
+
       private
 
         def deep_compact(obj)
@@ -216,6 +221,20 @@ if __FILE__ == $0
           expect(resource.to_h[:apiVersion]).to eq("apps/v1")
           expect(resource.to_h[:kind]).to eq("Deployment")
         end
+      end
+    end
+
+    describe "pattern matching" do
+      it "destructures nested keys" do
+        resource = Kube::Schema["Deployment"].new { metadata.name = "web" }
+        resource => {kind: "Deployment", metadata: {name: String => name}}
+
+        expect(name).to eq("web")
+      end
+
+      it "does not match when a nested value differs" do
+        resource = Kube::Schema["Deployment"].new { metadata.name = "web" }
+        expect { resource => {metadata: {name: "other"}} }.to raise_error(NoMatchingPatternError)
       end
     end
 
@@ -519,6 +538,28 @@ if __FILE__ == $0
         h = incomplete_deployment.to_h
         expect(h[:apiVersion]).to eq("apps/v1")
         expect(h[:kind]).to eq("Deployment")
+      end
+    end
+
+    describe "pattern matching" do
+      let(:deployment) do
+        Kube::Schema["Deployment"].new {
+          metadata.name = "some-resource"
+          metadata.namespace = "prod"
+        }
+      end
+
+      it "destructures with a nested hash pattern" do
+        deployment => {kind: String => kind, metadata: {name:, namespace:}}
+        expect([kind, name, namespace]).to eq(["Deployment", "some-resource", "prod"])
+      end
+
+      it "matches in a case/in" do
+        matched = case deployment
+                  in {metadata: {name: "some-resource"}} then true
+                  else false
+                  end
+        expect(matched).to be true
       end
     end
 

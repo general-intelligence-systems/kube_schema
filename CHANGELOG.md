@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 This file starts at 1.10.0; for earlier releases see the git history.
 
+## [1.12.0]
+
+### Added
+
+- Ruby pattern matching support. `Resource#deconstruct_keys` exposes `to_h`,
+  so resources match against hash patterns all the way down; `Manifest#deconstruct`
+  exposes the resource array, so manifests match against array patterns.
+
+      resource => {metadata: {name:}}
+
+      Deployment = Kube::Schema["Deployment"]
+      manifest => [Deployment => dep, *rest]
+
+  Note that `Kube::Schema["Deployment"]` cannot be written inline in a pattern:
+  Ruby parses `Const[...]` as array-pattern syntax, not a method call. Assign
+  the class to a constant, or use a pin expression —
+  `^(Kube::Schema["Deployment"])`.
+
 ## [1.11.0]
 
 ### Added
