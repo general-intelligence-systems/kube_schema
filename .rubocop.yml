@@ -114,7 +114,12 @@ Local/UseTap:
 Local/CommentStructure:
   Enabled: true
 
-  MaximumWords: 30
+  # Cop source files narrate AST/regex logic in prose; they predate this cop
+  # and aren't written to its summary-length rules.
+  Exclude:
+    - cops/**/*
+
+  MaximumWords: 10
   BaseWords: 10
   WordsPerLine: 3
   ModuleWords: 10
