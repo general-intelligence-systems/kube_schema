@@ -6,30 +6,27 @@ This file starts at 1.10.0; for earlier releases see the git history.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-17
+
+### Added
+
+- `require "kube_schema"` now works alongside `require "kube/schema"`.
+  `lib/kube_schema.rb` is a new entry point that loads the library;
+  `Kube::Schema::VERSION` is unchanged.
+
+- `Kube::Schema::Lazy` — `Scanner` (byte-offset index over the schema files),
+  `Index`/`Entry`, `Spill` (temp-file backing for registered schemas), and
+  `Source`, which stands in for a compiled schema: it answers `#value`,
+  `#valid?`, `#validate` and `#ref`, loading the definition for property names
+  and compiling behind a `WeakRef` so repeated validations reuse a live schema
+  while the GC can still reclaim it.
+
+- `Kube::MissingSchemaError`, raised when a definition cannot be read at
+  validation time. A vanished spilled temp file says so explicitly, since that
+  means the `Tempfile` was collected or the tmpdir swept, rather than the
+  install being broken.
+
 ### Changed
-
-- **Releases run on `gem kit`, not on `bin/*`.** `bin/increment-version`,
-  `bin/release-gem` and `bin/tag-version` are gone, replaced by the
-  [gem_kit-release](https://github.com/n-at-han-k/gem_kit) RubyGems plugin:
-  `gem kit bump`, `gem kit changelog`, `gem kit release` and `gem kit tag`.
-  The three scripts between them bumped the version, compared it against
-  RubyGems, built, pushed and tagged. What they never did was check that the
-  release was documented or that promises made about it had been kept, and
-  `gem kit` refuses to build without both -- see [RELEASE.md](RELEASE.md) and
-  [DEPRECATIONS.md](DEPRECATIONS.md), which are now in the repository.
-
-  `gem_kit` is a new runtime dependency, so a deprecation can be *declared*
-  (`GemKit::Deprecate`) where the deprecated name lives; it has no
-  dependencies of its own beyond RubyGems'. `gem_kit-release`, which does the
-  enforcing, is in the `release` bundle group and is nobody's dependency.
-
-- **The version constant moved to `lib/kube_schema/version.rb`** from
-  `lib/kube/schema/version.rb`, and `lib/kube_schema.rb` is a new entry point
-  that requires the library. `gem kit` derives both paths from the gem's name,
-  and the gem is called kube_schema. `require "kube_schema"` now works
-  alongside `require "kube/schema"`; `Kube::Schema::VERSION` is unchanged.
-  The `version.rb.erb` template is gone -- `gem kit bump` rewrites the version
-  literal in place rather than regenerating the file.
 
 - **Schemas are compiled per definition, on demand, and collected afterwards.**
   `Instance#schemer` used to parse `v<version>.json`, merge every
@@ -73,6 +70,30 @@ This file starts at 1.10.0; for earlier releases see the git history.
   and property names) instead of a compiled schema. The index is built by
   scanning the JSON for definition boundaries, so the schema documents are
   never parsed whole and nothing but offsets and small metadata is retained.
+  Callers that reached into `Instance.schemers` must update to `Instance.catalogs`
+  and expect a `Lazy::Index`, not a `JSONSchemer::Schema`.
+
+- **The version constant file moved to `lib/kube_schema/version.rb`** from
+  `lib/kube/schema/version.rb`. `gem kit bump` derives the path from the gem's
+  name and rewrites the literal in place, so the `version.rb.erb` template is
+  gone. External code that `require`d `kube/schema/version` directly must now
+  `require "kube_schema/version"`; the `Kube::Schema::VERSION` constant itself
+  is unchanged.
+
+- **Releases run on `gem kit`, not on `bin/*`.** `bin/increment-version`,
+  `bin/release-gem` and `bin/tag-version` are gone, replaced by the
+  [gem_kit-release](https://github.com/n-at-han-k/gem_kit) RubyGems plugin:
+  `gem kit bump`, `gem kit changelog`, `gem kit release` and `gem kit tag`.
+  The three scripts between them bumped the version, compared it against
+  RubyGems, built, pushed and tagged. What they never did was check that the
+  release was documented or that promises made about it had been kept, and
+  `gem kit` refuses to build without both — see [RELEASE.md](RELEASE.md) and
+  [DEPRECATIONS.md](DEPRECATIONS.md), which are now in the repository.
+
+  `gem_kit` is a new runtime dependency, so a deprecation can be *declared*
+  (`GemKit::Deprecate`) where the deprecated name lives; it has no
+  dependencies of its own beyond RubyGems'. `gem_kit-release`, which does the
+  enforcing, is in the `release` bundle group and is nobody's dependency.
 
 - **Tests run on [scampi](https://github.com/general-intelligence-systems/scampi)
   instead of RSpec.** The co-located specs moved out of
@@ -83,19 +104,12 @@ This file starts at 1.10.0; for earlier releases see the git history.
   rather than `expect`, and the devshell gained `ripgrep`, which scampi shells
   out to for discovery.
 
-### Added
+### Removed
 
-- `Kube::Schema::Lazy` — `Scanner` (byte-offset index over the schema files),
-  `Index`/`Entry`, `Spill` (temp-file backing for registered schemas), and
-  `Source`, which stands in for a compiled schema: it answers `#value`,
-  `#valid?`, `#validate` and `#ref`, loading the definition for property names
-  and compiling behind a `WeakRef` so repeated validations reuse a live schema
-  while the GC can still reclaim it.
-
-- `Kube::MissingSchemaError`, raised when a definition cannot be read at
-  validation time. A vanished spilled temp file says so explicitly, since that
-  means the `Tempfile` was collected or the tmpdir swept, rather than the
-  install being broken.
+- `bin/increment-version`, `bin/release-gem` and `bin/tag-version`. Use
+  `gem kit bump`, `gem kit release` and `gem kit tag` instead.
+- `lib/kube/schema/version.rb.erb`. `gem kit bump` edits the version literal
+  in `lib/kube_schema/version.rb` directly.
 
 ## [1.12.0] - 2026-09-28
 
