@@ -62,6 +62,11 @@ Local/ConstantMatchesPath:
     - sinatra/**/*
     - sequel_ext.rb
     - models/plugins/**/*
+    # Reopens the core Hash class (monkey patch).
+    - kube/monkey_patches.rb
+    # gem_kit's conventional lib/<gem_name>/version.rb path, which `gem kit
+    # bump` depends on; it does not nest under kube/schema/version.rb.
+    - kube_schema/version.rb
     - ratalada/contrib/inertia.rb
     - ratalada/contrib/inertia/core_ext.rb
     - ratalada/protocol_http_ext.rb
