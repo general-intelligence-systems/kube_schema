@@ -16,24 +16,23 @@ class Hash
     end
   end
 
-  #def respond_to_missing(name, _priv = false)
-  #  name.to_s.end_with?("=") || key?(name.to_sym)
-  #end
-
   # Build a Hash with autovivification via a block DSL.
+  # @yields {} a block evaluated against the new Hash.
+  # @returns [Hash] the Hash built by the block.
   #
+  # @example
   #   Hash.vivify {
   #     metadata.name = "web"
   #     spec.replicas = 3
   #     spec.selector.matchLabels.app = "web"
   #   }
   #   # => { metadata: { name: "web" }, spec: { replicas: 3, selector: { matchLabels: { app: "web" } } } }
-  #
   def self.vivify(&block)
     new.tap { |h| h.instance_exec(&block) }
   end
 
-  # Deep-stringify keys so symbol keys don't leak into YAML as `:key:`.
+  # Stringify keys so symbols don't leak into YAML as `:key:`.
+  # @returns [String] the Hash dumped as YAML.
   def to_yaml(*)
     Hash._deep_stringify_keys(self).then { |h| Psych.dump(h) }
   end

@@ -7,15 +7,13 @@ module Kube
       def initialize(hash = {}, &block)
         deep_symbolize_keys(self.class.defaults.to_h).then do |defaults|
 
-          # You are NEVER allowed to change `apiVersion` or `kind`
-          # Therefore, they are ONLY ever set from the self.defaults
-          # property.
+          # apiVersion and kind are never user-settable.
+          # They come only from self.class.defaults.
           deep_symbolize_keys(hash).then do |symbolized|
             @data = defaults
 
-            # This is extracting "top-level" properties from the input hash
-            # such as [apiVersion, spec, metadata, roleRef, ...]
-            # We then ignore the rest of the attributes by design.
+            # Lift top-level properties, e.g. spec, metadata, roleRef.
+            # Any other attributes are dropped by design.
             self.class.schema_properties.each do |property|
               if symbolized.key?(property)
                 @data[property] = symbolized.delete(property)
@@ -29,7 +27,8 @@ module Kube
         end
       end
 
-      # Gets overridden by the factory in Kube::Schema::Instance
+      # Overridden by the factory in Kube::Schema::Instance.
+      # @returns [JSONSchemer::Schema, nil] the schema, once overridden.
       def self.schema
         raise "Kube::Schema::Resource should NOT be instanciated directly"
       end
@@ -38,8 +37,8 @@ module Kube
         raise "Kube::Schema::Resource should NOT be instanciated directly"
       end
 
-      # Gets overridden by the factory in Kube::Schema::Instance.
-      # Returns a frozen Hash like { "apiVersion" => "apps/v1", "kind" => "Deployment" }
+      # Overridden by the factory in Kube::Schema::Instance.
+      # @returns [Hash] a frozen Hash like { "apiVersion" => "apps/v1", "kind" => "Deployment" }.
       def self.defaults
         raise "Kube::Schema::Resource should NOT be instanciated directly"
       end
@@ -52,8 +51,9 @@ module Kube
         end
       end
 
-      # Like #valid? but raises Kube::ValidationError with details on failure.
-      # The error message includes the resource kind and name for context.
+      # Like #valid? but raises on failure.
+      # @returns [Boolean] true if the resource is valid.
+      # @raises [Kube::ValidationError] with details on failure.
       def valid!
         if self.class.schema.nil?
           true
@@ -71,9 +71,8 @@ module Kube
         end
       end
 
-      # Returns the resource data as a Hash. Defaults (apiVersion, kind)
-      # from the schema are authoritative and cannot be overridden --
-      # they are facts derived from the GVK metadata.
+      # The resource data as a Hash; apiVersion/kind are authoritative.
+      # @returns [Hash] the resource data, symbol-keyed.
       def to_h
         defaults = self.class.defaults
         data = deep_compact(@data)
@@ -81,8 +80,7 @@ module Kube
 
         if defaults
           symbolized = deep_symbolize_keys(defaults)
-          # Defaults go first (for key ordering), then user data minus
-          # any attempts to override the authoritative keys.
+          # Defaults go first, for key ordering, then the rest of the data.
           symbolized.merge(data.reject { |k, _| symbolized.key?(k) })
         else
           data
@@ -90,7 +88,8 @@ module Kube
       end
 
       # Serializes to clean Kubernetes YAML.
-      # Raises Kube::ValidationError if the resource is not valid.
+      # @returns [String] the resource as YAML.
+      # @raises [Kube::ValidationError] if the resource is not valid.
       def to_yaml
         if valid!
           deep_stringify_keys(to_h).to_yaml
@@ -101,9 +100,9 @@ module Kube
         other.is_a?(Resource) && to_h == other.to_h
       end
 
-      # Ruby pattern matching: `resource => {metadata: {name:}}`.
-      # to_h is already plain nested symbol-keyed Hashes, so nested
-      # patterns work all the way down for free.
+      # Supports pattern matching, e.g. `resource => {metadata: {name:}}`.
+      # @parameter keys [Array(Symbol), nil] the keys requested by the pattern.
+      # @returns [Hash] the same nested Hash as #to_h.
       def deconstruct_keys(keys) = to_h
 
       private
@@ -115,7 +114,9 @@ module Kube
           when Hash
             obj.each_with_object({}) do |(k, v), result|
               compacted = deep_compact(v)
-              result[k] = compacted unless compacted.nil?
+              unless compacted.nil?
+                result[k] = compacted
+              end
             end
           when Array
             obj.map { |v| deep_compact(v) }

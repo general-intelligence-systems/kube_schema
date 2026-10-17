@@ -4,30 +4,26 @@ require "yaml"
 
 module Kube
   module Schema
-    # A flat, ordered collection of Kubernetes resources.
+    # A flat, ordered, Enumerable collection of Kubernetes resources.
     #
-    # Manifest is Enumerable over Resource objects. It cannot be nested —
-    # appending one Manifest into another extracts and flattens its resources.
-    #
+    # @example
     #   manifest = Kube::Schema::Manifest.new
     #   manifest << deployment_resource
     #   manifest << another_manifest   # flattened automatically
     #   puts manifest.to_yaml          # multi-document YAML output
     #
-    # File I/O:
+    # @example File I/O
     #   manifest = Kube::Schema::Manifest.open("cluster.yaml")
     #   manifest << new_resource
     #   manifest.write
-    #
     class Manifest
       include Enumerable
 
       attr_reader :filename
 
       # Create a new Manifest, optionally seeded with resources.
-      #
-      # @param resources [Array<Resource, Manifest>] initial resources to include
-      # @param filename  [String, nil] optional filename for file-backed manifests
+      # @parameter resources [Array(Resource, Manifest)] initial resources to include.
+      # @parameter filename [String, nil] an optional filename for file-backed manifests.
       def initialize(*resources, filename: nil)
         @resources = []
         @filename  = filename
@@ -35,14 +31,9 @@ module Kube
         resources.each { |r| self << r }
       end
 
-      # Append a resource, manifest, or array of resources.
-      #
-      # - Resource objects are appended directly.
-      # - Manifest objects are flattened — their resources are extracted.
-      # - Arrays are iterated and each element is appended.
-      #
-      # @param item [Resource, Manifest, Array]
-      # @return [self]
+      # Append a resource, manifest, or array of either.
+      # @parameter item [Resource, Manifest, Array] what to append.
+      # @returns [self] appended; a Manifest is flattened, an Array iterated.
       def <<(item)
         case item
         when Manifest
@@ -60,94 +51,86 @@ module Kube
         self
       end
 
-      # @yield [Resource] each resource in insertion order
+      # @yields {|resource| ...} each resource in insertion order.
       def each(&block)
         @resources.each(&block)
       end
 
       # Number of resources in the manifest.
+      # @returns [Integer] the resource count.
       def size
         @resources.size
       end
       alias_method :length, :size
 
-      # Returns the manifest as multi-document YAML, separated by "---".
-      # This is the standard format for Kubernetes manifest files.
-      #
-      # @return [String]
+      # The manifest as "---"-separated multi-document YAML.
+      # @returns [String] the standard Kubernetes manifest file format.
       def to_yaml
         @resources.map { |r| r.to_yaml }.join("")
       end
 
       # Returns an array of resource hashes.
-      #
-      # @return [Array<Hash>]
+      # @returns [Array(Hash)] a copy of the resources, in order.
       def to_a
         @resources.dup
       end
 
-      # Ruby pattern matching: `manifest => [Kube::Cluster["Deployment"], *]`.
+      # Supports pattern matching, e.g. `manifest => [resource, *]`.
+      # @returns [Array(Hash)] the same array as #to_a.
       def deconstruct = to_a
 
-      # -------------------------------------------------------------------
-      # File I/O
-      # -------------------------------------------------------------------
+      # File I/O.
 
-      # Parse a YAML string containing one or more Kubernetes resource
-      # documents and return a Manifest populated with typed Resource objects.
+      # Parse multi-document YAML into a Manifest of typed Resources.
       #
-      # Each document's "kind" is resolved via Kube::Schema.parse to
-      # produce the correct Resource subclass (e.g. Deployment, Service).
-      # Documents without a recognized "kind" fall back to a bare Resource.
-      #
+      # @example
       #   yaml = `helm template my-release bitnami/nginx`
       #   manifest = Kube::Schema::Manifest.parse(yaml)
       #   manifest.first.class  #=> Kube::Schema::Resource (Deployment subclass)
       #
-      # @param yaml_string [String] multi-document YAML
-      # @return [Manifest]
+      # @parameter yaml_string [String] multi-document YAML.
+      # @returns [Manifest] the parsed resources.
       def self.parse(yaml_string)
-        docs = if YAML.respond_to?(:safe_load_stream)
-                 YAML.safe_load_stream(yaml_string, permitted_classes: [Symbol])
-               else
-                 YAML.load_stream(yaml_string)
-               end
+        if YAML.respond_to?(:safe_load_stream)
+          docs = YAML.safe_load_stream(yaml_string, permitted_classes: [Symbol])
+        else
+          docs = YAML.load_stream(yaml_string)
+        end
 
         resources = docs.compact.map { |doc| parse_doc(doc) }
         new(*resources)
       end
 
-      # Read a YAML file containing one or more Kubernetes resource documents
-      # and return a Manifest populated with typed Resource objects.
+      # Read a YAML file into a Manifest of typed Resources.
       #
+      # @example
       #   manifest = Kube::Schema::Manifest.open("deploy.yaml")
       #   manifest.count  #=> 3
       #   manifest.filename #=> "deploy.yaml"
       #
-      # @param path [String] path to a YAML file
-      # @return [Manifest]
+      # @parameter path [String] path to a YAML file.
+      # @returns [Manifest] the parsed resources, with filename set.
       def self.open(path)
         contents = File.read(path)
-        docs = if YAML.respond_to?(:safe_load_stream)
-                 YAML.safe_load_stream(contents, permitted_classes: [Symbol])
-               else
-                 # Ruby < 3.1 fallback
-                 YAML.load_stream(contents)
-               end
+        if YAML.respond_to?(:safe_load_stream)
+          docs = YAML.safe_load_stream(contents, permitted_classes: [Symbol])
+        else
+          docs = YAML.load_stream(contents)
+        end
 
         resources = docs.compact.map { |doc| parse_doc(doc) }
         new(*resources, filename: path)
       end
 
       # Write the manifest to a file as multi-document YAML.
-      #
-      # @param path [String, nil] destination path; defaults to the filename
-      #   the manifest was opened from.
-      # @return [String] the path written to
-      # @raise [ArgumentError] if no path is given and no filename is set
+      # @parameter path [String, nil] destination path, defaulting to #filename.
+      # @returns [String] the path written to.
+      # @raises [ArgumentError] if no path is given and no filename is set.
       def write(path = nil)
         path ||= @filename
-        raise ArgumentError, "No filename set. Pass a path to #write or use Manifest.open." if path.nil?
+        if path.nil?
+          raise ArgumentError, "No filename set. Pass a path to #write or use Manifest.open."
+        end
 
         File.write(path, to_yaml)
         @filename = path
@@ -155,10 +138,9 @@ module Kube
       end
 
       # Parse a single YAML document hash into a typed Resource.
-      #
-      # @param doc [Hash] a parsed YAML document
-      # @return [Resource]
-      # @raise [RuntimeError] if the kind is not recognized
+      # @parameter doc [Hash] a parsed YAML document.
+      # @returns [Resource] the typed resource.
+      # @raises [RuntimeError] if the kind is not recognized.
       def self.parse_doc(doc)
         Kube::Schema.parse(doc)
       end
@@ -167,7 +149,8 @@ module Kube
       private
 
         # Deep-stringify keys for clean YAML output.
-        # (Hash#to_yaml with symbol keys produces `:key:` which is ugly.)
+        # @parameter obj [Object] a Hash, Array, or scalar to stringify.
+        # @returns [Object] the same structure with string keys.
         def deep_stringify(obj)
           case obj
           when Hash

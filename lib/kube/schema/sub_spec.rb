@@ -2,28 +2,19 @@
 
 module Kube
   module Schema
-    # A lightweight, schema-validated wrapper for non-resource Kubernetes
-    # definitions — things like Container, ContainerPort, Volume, Probe,
-    # etc. that live inside resource specs but have no apiVersion/kind.
+    # A schema-validated wrapper for non-resource Kubernetes definitions.
     #
-    # SubSpec validates against the OpenAPI JSON Schema definition and
-    # produces a plain Hash via #to_h, suitable for embedding directly
-    # inside Resource specs.
-    #
+    # @example
     #   container = Kube::Schema::SubSpec["Container"].new {
     #     name = "app"
     #     image = "nginx:1.27"
     #     ports = [{ containerPort: 80 }]
     #   }
-    #
     #   container.valid?  # => true
     #   container.to_h    # => { name: "app", image: "nginx:1.27", ... }
     #
-    # SubSpec instances auto-coerce when placed inside a Resource —
-    # no explicit .to_h is needed:
-    #
+    # @example Auto-coerces inside a Resource, no #to_h needed
     #   spec.template.spec.containers = [container]
-    #
     class SubSpec
 
       def initialize(hash = {}, &block)
@@ -42,7 +33,8 @@ module Kube
         end
       end
 
-      # Gets overridden by the factory in Kube::Schema::Instance
+      # Overridden by the factory in Kube::Schema::Instance.
+      # @returns [JSONSchemer::Schema, nil] the schema, once overridden.
       def self.schema
         raise "Kube::Schema::SubSpec should NOT be instantiated directly"
       end
@@ -63,7 +55,9 @@ module Kube
         end
       end
 
-      # Like #valid? but raises Kube::ValidationError with details on failure.
+      # Like #valid? but raises on failure.
+      # @returns [Boolean] true if the sub-spec is valid.
+      # @raises [Kube::ValidationError] with details on failure.
       def valid!
         if self.class.schema.nil?
           true
@@ -72,9 +66,10 @@ module Kube
           errors = self.class.schema.validate(data).to_a
 
           unless errors.empty?
-            raise Kube::ValidationError.new(errors,
-              kind: self.class.definition_name,
-              manifest: data
+            raise Kube::ValidationError.new(
+              errors,
+              kind:     self.class.definition_name,
+              manifest: data,
             )
           end
 
@@ -83,6 +78,7 @@ module Kube
       end
 
       # Returns the sub-spec data as a plain Hash.
+      # @returns [Hash] the sub-spec data, symbol-keyed.
       def to_h
         data = deep_compact(@data)
         data.reject { |_, v| v.is_a?(Hash) && v.empty? }
@@ -94,10 +90,10 @@ module Kube
 
       # Look up a sub-spec definition by short name.
       #
+      # @example
       #   Kube::Schema::SubSpec["Container"]
       #   Kube::Schema::SubSpec["ContainerPort"]
       #   Kube::Schema::SubSpec["Volume"]
-      #
       class << self
         def [](name)
           version = Schema.schema_version || Schema::DEFAULT_VERSION
@@ -113,7 +109,9 @@ module Kube
           when Hash
             obj.each_with_object({}) do |(k, v), result|
               compacted = deep_compact(v)
-              result[k] = compacted unless compacted.nil?
+              unless compacted.nil?
+                result[k] = compacted
+              end
             end
           when Array
             obj.map { |v| deep_compact(v) }

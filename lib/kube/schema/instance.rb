@@ -5,15 +5,13 @@ require "json_schemer"
 
 module Kube
   module Schema
-    # Represents a single Kubernetes version's OpenAPI schema.
-    # Lazily loads the Swagger JSON once per version (shared across instances)
-    # and builds resource classes by kind.
+    # One Kubernetes version's OpenAPI schema.
     #
+    # @example
     #   instance = Kube::Schema::Instance.new("1.34")
     #   instance["Deployment"]           # => Resource subclass
     #   instance["NetworkPolicy"]        # => Resource subclass
     #   instance.list_resources          # => sorted array of kind strings
-    #
     class Instance
       attr_reader :version
 
@@ -38,16 +36,14 @@ module Kube
 
       # Look up a resource by kind or full GVK string.
       #
-      # Accepts:
-      #   instance["Deployment"]                      — kind-only lookup
-      #   instance["apps/v1/Deployment"]              — group/version/kind
-      #   instance["v1/Pod"]                          — version/kind (core, empty group)
-      #   instance["networking.k8s.io/v1/Ingress"]    — fully qualified
+      # @example
+      #   instance["Deployment"]                      # kind-only lookup
+      #   instance["apps/v1/Deployment"]               # group/version/kind
+      #   instance["v1/Pod"]                           # version/kind, empty group
+      #   instance["networking.k8s.io/v1/Ingress"]     # fully qualified
       #
-      # Returns a class that inherits from Kube::Schema::Resource.
-      #
-      # Custom schemas registered via Kube::Schema.register take precedence
-      # over built-in definitions (kind-only lookups only).
+      # @parameter input [String] a kind, or a "group/version/kind" string.
+      # @returns [Class] a class that inherits from Kube::Schema::Resource.
       def [](input)
         @resource_classes[input] ||= begin
           if input.include?("/")
@@ -67,64 +63,66 @@ module Kube
             # Custom schemas take precedence on full-GVK lookups too.
             custom = find_custom_entry_by_gvk(group, version, kind)
             if custom
-              return build_resource_class(Lazy::Source.spilled(catalog, custom[:entry]), custom[:defaults])
+              entry = nil
+            else
+              entry = find_gvk_entry_by_full_gvk(group, version, kind)
             end
-
-            entry = find_gvk_entry_by_full_gvk(group, version, kind)
           else
             # Kind-only lookup — custom schemas take precedence.
             custom = find_custom_entry(input)
             if custom
-              return build_resource_class(Lazy::Source.spilled(catalog, custom[:entry]), custom[:defaults])
+              entry = nil
+            else
+              entry = find_gvk_entry(input)
+            end
+          end
+
+          if custom
+            build_resource_class(Lazy::Source.spilled(catalog, custom[:entry]), custom[:defaults])
+          else
+            if entry.nil?
+              raise "No resource schema found for #{input.inspect}!" \
+                "\nUse #list_resources to see available kinds for v#{@version}."
             end
 
-            entry = find_gvk_entry(input)
+            ref_schema = Lazy::Source.indexed(catalog, entry[:definition_key])
+            build_resource_class(ref_schema, entry[:defaults].freeze)
           end
-
-          if entry.nil?
-            raise "No resource schema found for #{input.inspect}!" \
-              "\nUse #list_resources to see available kinds for v#{@version}."
-          end
-
-          ref_schema = Lazy::Source.indexed(catalog, entry[:definition_key])
-          build_resource_class(ref_schema, entry[:defaults].freeze)
         end
       end
 
-      # All available resource kinds for this version, including any
-      # custom schemas registered via Kube::Schema.register.
-      #
-      # @return [Array<String>] sorted kind names
+      # All resource kinds for this version, plus custom ones.
+      # @returns [Array(String)] sorted kind names.
       def list_resources
         custom_kinds = Schema.custom_schemas.values.map { |v| v[:defaults]["kind"] }
         (gvk_index.keys + custom_kinds).uniq.sort
       end
 
-      # All API groups known to this version, including any custom schemas
-      # registered via Kube::Schema.register. The core API group is the
-      # empty string.
+      # All API groups for this version, plus custom ones.
       #
+      # @example
       #   instance.api_groups # => ["", "apps", "argoproj.io", "batch", ...]
       #
-      # @return [Array<String>] sorted, deduplicated group names
+      # @returns [Array(String)] sorted, deduplicated group names.
       def api_groups
         custom_groups = Schema.custom_schemas.keys.filter_map do |key|
           parts = key.split("/")
-          parts.first if parts.size == 3
+          if parts.size == 3
+            parts.first
+          end
         end
         (gvk_index.values.flatten.map { |entry| entry[:group] } + custom_groups).uniq.sort
       end
 
-      # Look up a sub-spec definition by short name (e.g. "Container",
-      # "ContainerPort", "Volume", "Probe"). Returns a class that
-      # inherits from Kube::Schema::SubSpec.
+      # Look up a sub-spec definition by short or full name.
       #
-      # Also accepts a full definition key like
-      # "io.k8s.api.core.v1.Container" for disambiguation.
-      #
+      # @example
       #   instance.sub_spec("Container")     # => SubSpec subclass
       #   instance.sub_spec("ContainerPort") # => SubSpec subclass
+      #   instance.sub_spec("io.k8s.api.core.v1.Container") # disambiguated
       #
+      # @parameter name [String] a short name or a full definition key.
+      # @returns [Class] a class that inherits from Kube::Schema::SubSpec.
       def sub_spec(name)
         @sub_spec_classes[name] ||= begin
           definition_key = find_definition_key(name)
@@ -139,9 +137,8 @@ module Kube
         end
       end
 
-      # All available definition short names for this version.
-      #
-      # @return [Array<String>] sorted, deduplicated short names
+      # All definition short names for this version.
+      # @returns [Array(String)] sorted, deduplicated short names.
       def list_definitions
         catalog.keys
           .map { |k| k.split(".").last }
@@ -166,23 +163,18 @@ module Kube
           end
         end
 
-        # Builds a map from kind to full GVK entry:
+        # Builds a map from kind to full GVK entry.
+        # @returns [Hash] kind => Array of entry hashes, keyed by GVK.
+        #
+        # @example
         #   {
-        #     "Deployment" => {
+        #     "Deployment" => [{
         #       definition_key: "io.k8s.api.apps.v1.Deployment",
         #       group: "apps",
         #       version: "v1",
         #       kind: "Deployment",
         #       defaults: { "apiVersion" => "apps/v1", "kind" => "Deployment" }
-        #     },
-        #     "Pod" => {
-        #       definition_key: "io.k8s.api.core.v1.Pod",
-        #       group: "",
-        #       version: "v1",
-        #       kind: "Pod",
-        #       defaults: { "apiVersion" => "v1", "kind" => "Pod" }
-        #     },
-        #     ...
+        #     }]
         #   }
         def gvk_index
           @gvk_index ||= begin
@@ -190,23 +182,29 @@ module Kube
 
             catalog.entries.each do |key, entry|
               gvks = entry.gvks
-              next unless gvks
+              unless gvks
+                next
+              end
 
               gvks.each do |gvk|
                 group = gvk["group"].to_s
                 version = gvk["version"]
                 kind = gvk["kind"]
-                api_version = group.empty? ? version : "#{group}/#{version}"
+                if group.empty?
+                  api_version = version
+                else
+                  api_version = "#{group}/#{version}"
+                end
 
                 index[kind] << {
                   definition_key: key,
-                  group: group,
-                  version: version,
-                  kind: kind,
-                  defaults: {
+                  group:          group,
+                  version:        version,
+                  kind:           kind,
+                  defaults:       {
                     "apiVersion" => api_version,
-                    "kind" => kind
-                  }
+                    "kind"       => kind,
+                  },
                 }
               end
             end
@@ -215,50 +213,66 @@ module Kube
           end
         end
 
-        # Find a GVK entry by kind name (case-insensitive).
-        # Returns the first matching entry hash or nil.
+        # Find a GVK entry by kind name, case-insensitively.
+        # @parameter kind [String] the kind name to look up.
+        # @returns [Hash, nil] the first matching entry, if any.
         def find_gvk_entry(kind)
           entries = gvk_index[kind]
-          return entries.first if entries && !entries.empty?
-
-          gvk_index.each do |k, v|
-            return v.first if k.downcase == kind.downcase
+          if entries && !entries.empty?
+            entries.first
+          else
+            match = gvk_index.find { |k, _v| k.downcase == kind.downcase }
+            match && match[1].first
           end
-
-          nil
         end
 
         # Find a GVK entry by exact group, version, and kind.
-        # Returns the matching entry hash or nil.
+        # @parameter group [String] the API group, empty for core.
+        # @parameter version [String] the API version, e.g. "v1".
+        # @parameter kind [String] the kind name.
+        # @returns [Hash, nil] the matching entry, if any.
         def find_gvk_entry_by_full_gvk(group, version, kind)
           entries = gvk_index[kind]
-          return nil if entries.nil? || entries.empty?
-
-          entries.find do |entry|
-            entry[:group] == group && entry[:version] == version
+          if entries.nil? || entries.empty?
+            nil
+          else
+            entries.find do |entry|
+              entry[:group] == group && entry[:version] == version
+            end
           end
         end
 
-        # Find a custom schema entry by kind (case-insensitive). The registry
-        # is keyed by full GVK, so match on each entry's recorded kind. When
-        # several groups register the same kind, the first registered wins.
-        # Returns the { schema:, defaults: } hash or nil.
+        # Find a custom schema entry by kind, case-insensitively.
+        # @parameter kind [String] the kind name to look up.
+        # @returns [Hash, nil] the first-registered { entry:, defaults: } hash.
         def find_custom_entry(kind)
           registry = Schema.custom_schemas
-          registry.each_value { |v| return v if v[:defaults]["kind"] == kind }
-          registry.each_value { |v| return v if v[:defaults]["kind"].casecmp?(kind) }
-
-          nil
+          exact = registry.values.find { |v| v[:defaults]["kind"] == kind }
+          if exact
+            exact
+          else
+            registry.values.find { |v| v[:defaults]["kind"].casecmp?(kind) }
+          end
         end
 
-        # Find a custom schema entry by exact group, version, and kind.
-        # Returns the { schema:, defaults: } hash or nil.
+        # Find a custom schema entry by group, version, and kind.
+        # @parameter group [String] the API group, empty for core.
+        # @parameter version [String] the API version, e.g. "v1".
+        # @parameter kind [String] the kind name.
+        # @returns [Hash, nil] the { entry:, defaults: } hash, if any.
         def find_custom_entry_by_gvk(group, version, kind)
-          api_version = group.empty? ? version : "#{group}/#{version}"
+          if group.empty?
+            api_version = version
+          else
+            api_version = "#{group}/#{version}"
+          end
           Schema.custom_schemas["#{api_version}/#{kind}"]
         end
 
-        # Build a Resource subclass from a JSONSchemer instance and defaults hash.
+        # Build a Resource subclass from a schema and defaults.
+        # @parameter schema_instance [JSONSchemer::Schema] the resource's schema.
+        # @parameter defaults [Hash] the frozen apiVersion/kind defaults.
+        # @returns [Class] a Resource subclass bound to the schema.
         def build_resource_class(schema_instance, defaults)
           Class.new(::Kube::Schema::Resource) do
             @schema = schema_instance
@@ -285,38 +299,45 @@ module Kube
           end
         end
 
-        # Resolve a short name like "Container" to its full definition key
-        # "io.k8s.api.core.v1.Container".
+        # Resolve a short name to its full definition key.
         #
-        # Strategy:
-        #   1. Exact match on full key (for power users)
-        #   2. Short-name match on last segment
-        #   3. Prefer stable API versions (v1 > v1beta1 > v1alpha1)
+        # @example
+        #   find_definition_key("Container") # => "io.k8s.api.core.v1.Container"
+        #
+        # @parameter name [String] a short name or a full definition key.
+        # @returns [String, nil] a full key, preferring stable API versions.
         def find_definition_key(name)
           definitions = catalog.entries
 
           # Exact full-key match
-          return name if definitions.key?(name)
-
-          # Short-name matches (last segment after final ".")
-          candidates = definitions.keys.select { |k| k.split(".").last == name }
-          return nil if candidates.empty?
-          return candidates.first if candidates.size == 1
-
-          # Disambiguation: prefer stable versions, then beta, then alpha
-          candidates.min_by { |k|
-            version_segment = k.split(".")[-2].to_s
-            case version_segment
-            when /\Av\d+\z/ then [0, version_segment]
-            when /beta/      then [1, version_segment]
-            when /alpha/     then [2, version_segment]
-            else                  [3, version_segment]
+          if definitions.key?(name)
+            name
+          else
+            candidates = definitions.keys.select { |k| k.split(".").last == name }
+            if candidates.empty?
+              nil
+            else
+              if candidates.size == 1
+                candidates.first
+              else
+                candidates.min_by { |k|
+                  version_segment = k.split(".")[-2].to_s
+                  case version_segment
+                  when /\Av\d+\z/ then [0, version_segment]
+                  when /beta/      then [1, version_segment]
+                  when /alpha/     then [2, version_segment]
+                  else                  [3, version_segment]
+                  end
+                }
+              end
             end
-          }
+          end
         end
 
-        # Build a SubSpec subclass from a JSONSchemer instance and a
-        # human-readable definition name (for error messages).
+        # Build a SubSpec subclass from a schema and definition name.
+        # @parameter schema_instance [JSONSchemer::Schema] the definition's schema.
+        # @parameter definition_name [String] the name shown in error messages.
+        # @returns [Class] a SubSpec subclass bound to the schema.
         def build_sub_spec_class(schema_instance, definition_name)
           Class.new(::Kube::Schema::SubSpec) do
             @schema = schema_instance
@@ -341,8 +362,8 @@ module Kube
           end
         end
 
-        # Called by Kube::Schema.register and reset_custom_schemas! to
-        # invalidate cached resource classes so new registrations take effect.
+        # Invalidates cached resource classes after a schema registration.
+        # @returns [void] clears the resource class cache.
         def clear_resource_cache!
           @resource_classes.clear
         end

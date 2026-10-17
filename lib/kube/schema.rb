@@ -2,8 +2,8 @@
 
 require_relative 'monkey_patches'
 require_relative 'errors'
-# lib/kube_schema/version.rb, not schema/version.rb: `gem kit bump` derives the
-# version file from the gem's name, and the gem is called kube_schema.
+# Requires lib/kube_schema/version.rb, not schema/version.rb.
+# `gem kit bump` derives the version file from the gem name.
 require_relative '../kube_schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/sub_spec'
@@ -36,15 +36,9 @@ module Kube
       attr_reader :custom_schemas
 
       # Register a standalone JSON Schema for a custom resource kind.
-      #
-      # This lets users add CRD schemas from any source — for example,
-      # the datreeio/CRDs-catalog, operator repos, or their own CRDs.
-      # Registered kinds take precedence over built-in definitions.
-      #
-      # @param kind [String] The Kubernetes Kind (e.g. "Certificate")
-      # @param schema [Hash, String, Pathname] JSON Schema as a Hash,
-      #   a JSON string, or a file path to a .json file
-      # @param api_version [String] The apiVersion (e.g. "cert-manager.io/v1")
+      # @parameter kind [String] the Kubernetes Kind, e.g. "Certificate".
+      # @parameter schema [Hash, String, Pathname] a Hash, a JSON string, or a path to a .json file.
+      # @parameter api_version [String] the apiVersion, e.g. "cert-manager.io/v1".
       #
       # @example Register from a local file
       #   Kube::Schema.register("Certificate",
@@ -62,48 +56,53 @@ module Kube
         require "json"
         require "json_schemer"
 
-        parsed = case schema
-          when Hash
-            schema
-          when String, Pathname
-            path = schema.to_s
-            if File.exist?(path)
-              JSON.parse(File.read(path))
-            else
-              JSON.parse(path)
-            end
+        case schema
+        when Hash
+          parsed = schema
+        when String, Pathname
+          path = schema.to_s
+          if File.exist?(path)
+            parsed = JSON.parse(File.read(path))
           else
-            raise ArgumentError,
-              "schema must be a Hash, a JSON string, or a file path — got #{schema.class}"
+            parsed = JSON.parse(path)
           end
+        else
+          raise ArgumentError,
+            "schema must be a Hash, a JSON string, or a file path — got #{schema.class}"
+        end
 
-        # Key by full GVK ("group/version/Kind") so a registered CRD resolves
-        # on fully-qualified lookups (e.g. the api_version/kind path that
-        # Resource#rebuild reconstructs), not just kind-only lookups. Keying by
-        # bare kind also collided when two CRDs shared a kind across groups.
-        key = api_version ? "#{api_version}/#{kind}" : kind
+        # Key by GVK so lookups can be fully-qualified.
+        # A bare kind key collides when two CRDs share a kind.
+        if api_version
+          key = "#{api_version}/#{kind}"
+        else
+          key = kind
+        end
         @custom_schemas[key] = {
-          entry: Lazy::Spill.write(key, parsed),
-          defaults: { "apiVersion" => api_version, "kind" => kind }.freeze
+          entry:    Lazy::Spill.write(key, parsed),
+          defaults: { "apiVersion" => api_version, "kind" => kind }.freeze,
         }
 
-        # Invalidate cached resource classes on all instances so the
-        # new registration takes effect immediately.
+        # Invalidate cached resource classes so this registration applies.
         @instances.each_value { |inst| inst.send(:clear_resource_cache!) }
 
         kind
       end
 
       # Remove all custom schema registrations.
-      # Useful for test teardown or resetting state.
+      # @returns [void] clears custom schemas and resource caches.
       def reset_custom_schemas!
         Lazy::Spill.clear
         @custom_schemas.clear
         @instances.each_value { |inst| inst.send(:clear_resource_cache!) }
       end
 
-      # Kube::Schema["1.34"]           => cached Instance (supports ["Deployment"] chaining)
-      # Kube::Schema["Deployment"]     => Resource via the default version
+      # @example
+      #   Kube::Schema["1.34"]       # => cached Instance (supports ["Deployment"] chaining)
+      #   Kube::Schema["Deployment"] # => Resource via the default version
+      #
+      # @parameter key [String] a version string or a Kind name.
+      # @returns [Instance, Class] the version Instance or a Resource subclass.
       def [](key)
         if key.start_with?("v") && Gem::Version.correct?(key.sub("v", ""))
           raise Kube::IncorrectVersionFormat,
@@ -117,7 +116,7 @@ module Kube
           else
             raise Kube::UnknownVersionError.new(
               "\n#{key} is an unknown version..." +
-              "\nAvailable: #{schema_versions.join(", ")}"
+              "\nAvailable: #{schema_versions.join(", ")}",
             )
           end
         else
@@ -127,31 +126,31 @@ module Kube
         end
       end
 
-      # Build a typed Resource from a raw hash.
+      # Build a typed Resource from a raw hash's "kind".
       #
-      # Looks up the "kind" key in the hash and resolves it to the
-      # correct Resource subclass via the schema registry. The hash
-      # may use string or symbol keys.
-      #
+      # @example
       #   Kube::Schema.parse("kind" => "Deployment", "apiVersion" => "apps/v1")
       #   Kube::Schema.parse(kind: "Pod", apiVersion: "v1", metadata: { name: "web" })
       #
-      # @param hash [Hash] a Kubernetes resource hash with at least a "kind" key
-      # @return [Resource] a schema-validated Resource instance
-      # @raise [ArgumentError] if the hash is nil, not a Hash, or missing "kind"
+      # @parameter hash [Hash] a resource hash with at least a "kind" key.
+      # @returns [Resource] a schema-validated Resource instance.
+      # @raises [ArgumentError] if the hash is nil, not a Hash, or missing "kind".
       def parse(hash)
-        raise ArgumentError, "Expected a Hash, got #{hash.class}" unless hash.is_a?(Hash)
+        unless hash.is_a?(Hash)
+          raise ArgumentError, "Expected a Hash, got #{hash.class}"
+        end
 
         kind = hash["kind"] || hash[:kind]
-        raise ArgumentError, "Hash must contain a \"kind\" key" if kind.nil?
+        if kind.nil?
+          raise ArgumentError, "Hash must contain a \"kind\" key"
+        end
 
         resource_class = self[kind]
         resource_class.new(hash)
       end
 
-      # Available Kubernetes versions, read from the local schemas directory.
-      #
-      # @return [Array<String>] sorted version strings like ["1.19", "1.20", ...]
+      # Available Kubernetes versions, read from the schemas directory.
+      # @returns [Array(String)] sorted version strings like ["1.19", "1.20", ...].
       def schema_versions
         @schema_versions ||=
           Dir.glob(File.join(SCHEMAS_DIR, "v*.json")).map do |file_path|
@@ -159,17 +158,18 @@ module Kube
           end.sort_by { Gem::Version.new(_1) }
       end
 
-      # The latest Kubernetes version available in the schemas directory.
+      # The latest Kubernetes version in the schemas directory.
+      # @returns [String] the latest available version string.
       def latest_version
         schema_versions.last
       end
 
-      # All API groups known to the default schema version, including any
-      # custom schemas registered via .register. The core group is "".
+      # All API groups for the default version, plus custom ones.
       #
+      # @example
       #   Kube::Schema.api_groups # => ["", "apps", "argoproj.io", "batch", ...]
       #
-      # @return [Array<String>] sorted, deduplicated group names
+      # @returns [Array(String)] sorted, deduplicated group names.
       def api_groups
         self[schema_version || DEFAULT_VERSION].api_groups
       end

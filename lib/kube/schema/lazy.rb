@@ -28,13 +28,11 @@ module Kube
             end
 
             if backslashes.even?
-              return i
+              break i
             end
 
             i += 1
-          end
-
-          raise "unterminated string at #{start}"
+          end || raise("unterminated string at #{start}")
         end
 
         def object_end(data, start)
@@ -53,12 +51,10 @@ module Kube
               i += 1
 
               if depth.zero?
-                return i
+                break i
               end
             end
-          end
-
-          raise "unterminated object at #{start}"
+          end || raise("unterminated object at #{start}")
         end
 
         def scan(path)
@@ -68,7 +64,9 @@ module Kube
           entries = {}
 
           while (pos = data.index(/[^\s,]/, pos))
-            break if data[pos] == "}"
+            if data[pos] == "}"
+              break
+            end
 
             unless data[pos] == '"'
               raise "expected a definition key at #{pos} of #{path}"
@@ -87,7 +85,14 @@ module Kube
         end
       end
 
-      Entry = Struct.new(:path, :offset, :length, :gvks, :properties, :spilled)
+      Entry = Struct.new(
+        :path,
+        :offset,
+        :length,
+        :gvks,
+        :properties,
+        :spilled,
+      )
 
       module Spill
         module_function
@@ -108,7 +113,7 @@ module Kube
             json.bytesize,
             hash["x-kubernetes-group-version-kind"],
             hash.fetch("properties", {}).keys,
-            true
+            true,
           )
         end
 
@@ -131,7 +136,7 @@ module Kube
                 offset,
                 length,
                 definition["x-kubernetes-group-version-kind"],
-                definition.fetch("properties", {}).keys
+                definition.fetch("properties", {}).keys,
               )
             end
           end
@@ -173,7 +178,11 @@ module Kube
         def ref(pointer) = schema.ref(pointer)
 
         def schema
-          live = @compiled&.weakref_alive? ? @compiled.__getobj__ : nil
+          if @compiled&.weakref_alive?
+            live = @compiled.__getobj__
+          else
+            live = nil
+          end
 
           live || begin
             compiled = JSONSchemer.schema(Lazy.rewrite(value), ref_resolver: Lazy.resolver(@index))
@@ -217,7 +226,11 @@ module Kube
       end
 
       def missing_message(entry, key)
-        named = key ? "Schema #{key.inspect}" : "Schema"
+        if key
+          named = "Schema #{key.inspect}"
+        else
+          named = "Schema"
+        end
 
         if entry.spilled
           "#{named} is missing: the temp file it was spilled to (#{entry.path}) is gone." \
