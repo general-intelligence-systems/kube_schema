@@ -16,6 +16,11 @@ Please see the [project documentation](https://general-intelligence-systems.gith
 
   - [Schema Versions](https://general-intelligence-systems.github.io/kube_schema/guides/schema-versions/index) - This guide covers working with different Kubernetes schema versions.
 
+## Contributing
+
+- [RELEASE.md](RELEASE.md) -- how a version is cut: `gem kit bump`, the changelog, and the gates that run before anything reaches RubyGems.
+- [DEPRECATIONS.md](DEPRECATIONS.md) -- the deprecation policy those gates enforce.
+
 ## Related Projects
 
 - [kube_cluster](https://github.com/general-intelligence-systems/kube_cluster) -- OOP resource management with dirty tracking and persistence

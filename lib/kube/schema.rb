@@ -2,7 +2,9 @@
 
 require_relative 'monkey_patches'
 require_relative 'errors'
-require_relative 'schema/version'
+# lib/kube_schema/version.rb, not schema/version.rb: `gem kit bump` derives the
+# version file from the gem's name, and the gem is called kube_schema.
+require_relative '../kube_schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/sub_spec'
 require_relative 'schema/lazy'

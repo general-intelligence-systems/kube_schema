@@ -74,7 +74,7 @@ This file starts at 1.10.0; for earlier releases see the git history.
   means the `Tempfile` was collected or the tmpdir swept, rather than the
   install being broken.
 
-## [1.12.0]
+## [1.12.0] - 2026-09-28
 
 ### Added
 
@@ -92,7 +92,7 @@ This file starts at 1.10.0; for earlier releases see the git history.
   the class to a constant, or use a pin expression —
   `^(Kube::Schema["Deployment"])`.
 
-## [1.11.0]
+## [1.11.0] - 2026-09-17
 
 ### Added
 
@@ -103,7 +103,7 @@ This file starts at 1.10.0; for earlier releases see the git history.
   from core resource/subresource strings — e.g. building RBAC rules — without
   hardcoding a group list.
 
-## [1.10.0]
+## [1.10.0] - 2026-08-03
 
 ### Added
 

@@ -13,10 +13,6 @@
         pkgs = nixpkgs.legacyPackages.${system};
         lib = mine.lib.${system};
 
-        # The Gemfile lists kube_schema's own dependencies instead of saying
-        # `gemspec`, so the lockfile carries no path gem and nothing here has to
-        # reach into the working tree. The library itself comes from RUBYLIB
-        # below, which is the only copy of it on the load path.
         gems = pkgs.bundlerEnv {
           name = "kube_schema-gems";
           ruby = pkgs.ruby_3_4;
@@ -30,7 +26,6 @@
           buildInputs = [
             gems
             gems.wrappedRuby
-            pkgs.trufflehog
             pkgs.ripgrep # scampi shells out to `rg` to discover __END__ spec sections
           ];
 
@@ -44,10 +39,6 @@
             export LC_ALL="''${LC_ALL:-$LANG}"
 
             export RUBYLIB="$PWD/lib''${RUBYLIB:+:$RUBYLIB}"
-
-            if [ ! -f .git/hooks/pre-commit ]; then
-              bundle exec lefthook install
-            fi
           '';
         };
       }
