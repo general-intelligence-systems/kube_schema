@@ -8,6 +8,29 @@ This file starts at 1.10.0; for earlier releases see the git history.
 
 ### Changed
 
+- **Releases run on `gem kit`, not on `bin/*`.** `bin/increment-version`,
+  `bin/release-gem` and `bin/tag-version` are gone, replaced by the
+  [gem_kit-release](https://github.com/n-at-han-k/gem_kit) RubyGems plugin:
+  `gem kit bump`, `gem kit changelog`, `gem kit release` and `gem kit tag`.
+  The three scripts between them bumped the version, compared it against
+  RubyGems, built, pushed and tagged. What they never did was check that the
+  release was documented or that promises made about it had been kept, and
+  `gem kit` refuses to build without both -- see [RELEASE.md](RELEASE.md) and
+  [DEPRECATIONS.md](DEPRECATIONS.md), which are now in the repository.
+
+  `gem_kit` is a new runtime dependency, so a deprecation can be *declared*
+  (`GemKit::Deprecate`) where the deprecated name lives; it has no
+  dependencies of its own beyond RubyGems'. `gem_kit-release`, which does the
+  enforcing, is in the `release` bundle group and is nobody's dependency.
+
+- **The version constant moved to `lib/kube_schema/version.rb`** from
+  `lib/kube/schema/version.rb`, and `lib/kube_schema.rb` is a new entry point
+  that requires the library. `gem kit` derives both paths from the gem's name,
+  and the gem is called kube_schema. `require "kube_schema"` now works
+  alongside `require "kube/schema"`; `Kube::Schema::VERSION` is unchanged.
+  The `version.rb.erb` template is gone -- `gem kit bump` rewrites the version
+  literal in place rather than regenerating the file.
+
 - **Schemas are compiled per definition, on demand, and collected afterwards.**
   `Instance#schemer` used to parse `v<version>.json`, merge every
   `*-definitions.json` into it, and hand the whole document to

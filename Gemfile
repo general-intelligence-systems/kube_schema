@@ -10,6 +10,7 @@ gem "lefthook", "~> 2.1"
 gem "rake", "~> 13.0"
 gem "scampi", "~> 1.0"
 gem "rubocop"
+gem "decode", "~> 0.27"
 
 group :release do
 	gem "gem_kit-release", "~> 0.3"

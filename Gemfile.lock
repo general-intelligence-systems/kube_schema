@@ -234,6 +234,7 @@ PLATFORMS
 
 DEPENDENCIES
   bake-modernize
+  decode (~> 0.27)
   gem_kit (~> 0.2)
   gem_kit-release (~> 0.3)
   json_schemer (~> 2.5.0)
