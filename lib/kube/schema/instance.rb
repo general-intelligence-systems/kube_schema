@@ -17,12 +17,10 @@ module Kube
     class Instance
       attr_reader :version
 
-      # Class-level cache so multiple Instance objects for the same version
-      # share the parsed Swagger schema.
-      @schemers = {}
+      @catalogs = {}
 
       class << self
-        attr_reader :schemers
+        attr_reader :catalogs
       end
 
       def initialize(version)
@@ -69,7 +67,7 @@ module Kube
             # Custom schemas take precedence on full-GVK lookups too.
             custom = find_custom_entry_by_gvk(group, version, kind)
             if custom
-              return build_resource_class(custom[:schema], custom[:defaults])
+              return build_resource_class(Lazy::Source.spilled(catalog, custom[:entry]), custom[:defaults])
             end
 
             entry = find_gvk_entry_by_full_gvk(group, version, kind)
@@ -77,7 +75,7 @@ module Kube
             # Kind-only lookup — custom schemas take precedence.
             custom = find_custom_entry(input)
             if custom
-              return build_resource_class(custom[:schema], custom[:defaults])
+              return build_resource_class(Lazy::Source.spilled(catalog, custom[:entry]), custom[:defaults])
             end
 
             entry = find_gvk_entry(input)
@@ -88,7 +86,7 @@ module Kube
               "\nUse #list_resources to see available kinds for v#{@version}."
           end
 
-          ref_schema = schemer.ref("#/definitions/#{entry[:definition_key]}")
+          ref_schema = Lazy::Source.indexed(catalog, entry[:definition_key])
           build_resource_class(ref_schema, entry[:defaults].freeze)
         end
       end
@@ -136,7 +134,7 @@ module Kube
               "\nUse #list_definitions to see available definitions for v#{version}."
           end
 
-          ref_schema = schemer.ref("#/definitions/#{definition_key}")
+          ref_schema = Lazy::Source.indexed(catalog, definition_key)
           build_sub_spec_class(ref_schema, name)
         end
       end
@@ -145,22 +143,15 @@ module Kube
       #
       # @return [Array<String>] sorted, deduplicated short names
       def list_definitions
-        schemer.value.fetch("definitions", {}).keys
+        catalog.keys
           .map { |k| k.split(".").last }
           .uniq.sort
       end
 
       private
 
-        # The JSONSchemer instance for this version's Swagger document.
-        # Cached at the class level so it's built once per version.
-        #
-        # After loading the base Swagger JSON, merges in any extra definition
-        # files found in the schemas directory (e.g. crd-definitions.json,
-        # loft-definitions.json). These files are flat JSON objects where keys
-        # are definition names and values are OpenAPI v2 schema objects.
-        def schemer
-          self.class.schemers[@version] ||= begin
+        def catalog
+          self.class.catalogs[@version] ||= begin
             path = File.join(SCHEMAS_DIR, "v#{version}.json")
 
             unless File.exist?(path)
@@ -169,26 +160,9 @@ module Kube
                 "\nUse `Kube::Schema.schema_versions` to get a list."
             end
 
-            schema = JSON.parse(File.read(path))
+            extra = Dir.glob(File.join(SCHEMAS_DIR, "*-definitions.json")).sort
 
-            # Merge extra definition files (*-definitions.json) into the
-            # base schema so CRD and aggregated-API types (e.g. loft,
-            # gateway-api) are available alongside built-in k8s types.
-            Dir.glob(File.join(SCHEMAS_DIR, "*-definitions.json")).each do |defs_path|
-              extra = JSON.parse(File.read(defs_path))
-              schema["definitions"] ||= {}
-              schema["definitions"].merge!(extra)
-            end
-
-            # Kubernetes OpenAPI v2 defines IntOrString as "type": "string"
-            # with "format": "int-or-string". This is a limitation of
-            # OpenAPI v2 which cannot express union types. Patch the
-            # definition so JSONSchemer accepts both integers and strings.
-            if (int_or_str = schema.dig("definitions", "io.k8s.apimachinery.pkg.util.intstr.IntOrString"))
-              int_or_str["type"] = ["string", "integer"]
-            end
-
-            JSONSchemer.schema(schema)
+            Lazy::Index.build([path] + extra)
           end
         end
 
@@ -214,8 +188,8 @@ module Kube
           @gvk_index ||= begin
             index = Hash.new { |h, k| h[k] = [] }
 
-            schemer.value.fetch("definitions", {}).each do |key, definition|
-              gvks = definition["x-kubernetes-group-version-kind"]
+            catalog.entries.each do |key, entry|
+              gvks = entry.gvks
               next unless gvks
 
               gvks.each do |gvk|
@@ -319,7 +293,7 @@ module Kube
         #   2. Short-name match on last segment
         #   3. Prefer stable API versions (v1 > v1beta1 > v1alpha1)
         def find_definition_key(name)
-          definitions = schemer.value.fetch("definitions", {})
+          definitions = catalog.entries
 
           # Exact full-key match
           return name if definitions.key?(name)
@@ -628,13 +602,14 @@ if __FILE__ == $0
       end
     end
 
-    describe "class-level schemer cache" do
-      it "shares the schemer across instances of the same version" do
+    describe "class-level catalog cache" do
+      it "shares the catalog across instances of the same version" do
         a = described_class.new("1.34")
         b = described_class.new("1.34")
-        # Both should resolve without error and return equivalent classes
+
         expect(a["Deployment"]).to be < Kube::Schema::Resource
         expect(b["Deployment"]).to be < Kube::Schema::Resource
+        expect(described_class.catalogs["1.34"]).to be_a(Kube::Schema::Lazy::Index)
       end
     end
   end

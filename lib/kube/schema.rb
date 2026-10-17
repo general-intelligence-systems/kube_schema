@@ -5,6 +5,7 @@ require_relative 'errors'
 require_relative 'schema/version'
 require_relative 'schema/resource'
 require_relative 'schema/sub_spec'
+require_relative 'schema/lazy'
 require_relative 'schema/instance'
 require_relative 'schema/manifest'
 
@@ -80,7 +81,7 @@ module Kube
         # bare kind also collided when two CRDs shared a kind across groups.
         key = api_version ? "#{api_version}/#{kind}" : kind
         @custom_schemas[key] = {
-          schema: JSONSchemer.schema(parsed),
+          entry: Lazy::Spill.write(key, parsed),
           defaults: { "apiVersion" => api_version, "kind" => kind }.freeze
         }
 
@@ -94,6 +95,7 @@ module Kube
       # Remove all custom schema registrations.
       # Useful for test teardown or resetting state.
       def reset_custom_schemas!
+        Lazy::Spill.clear
         @custom_schemas.clear
         @instances.each_value { |inst| inst.send(:clear_resource_cache!) }
       end

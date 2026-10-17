@@ -12,6 +12,8 @@ module Kube
   # Raised when a version string is formatted incorrectly (e.g. "v1.33.6").
   class IncorrectVersionFormat < Error; end
 
+  class MissingSchemaError < Error; end
+
   # Raised by Resource#valid! when data fails schema validation.
   #
   # Produces detailed, human-readable error messages that identify the exact
