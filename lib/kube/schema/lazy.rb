@@ -253,108 +253,105 @@ module Kube
   end
 end
 
-if __FILE__ == $0
-  require "bundler/setup"
-  require "rspec/autorun"
-  require "kube/schema"
+__END__
 
-  RSpec.describe Kube::Schema::Lazy do
-    SCHEMAS = File.expand_path("../../../schemas", __dir__)
-    PATHS = [File.join(SCHEMAS, "v1.33.json")] + Dir.glob(File.join(SCHEMAS, "*-definitions.json")).sort
+require "kube/schema"
 
-    subject(:index) { Kube::Schema::Lazy::Index.build(PATHS) }
+schemas = File.expand_path("../../../schemas", __dir__)
+paths = [File.join(schemas, "v1.33.json")] + Dir.glob(File.join(schemas, "*-definitions.json")).sort
+index = Kube::Schema::Lazy::Index.build(paths)
 
-    let(:deployment) do
-      {
-        "apiVersion" => "apps/v1",
-        "kind" => "Deployment",
-        "metadata" => {"name" => "web"},
-        "spec" => {
-          "selector" => {"matchLabels" => {"app" => "web"}},
-          "template" => {"spec" => {"containers" => [{"name" => "web", "image" => "nginx"}]}}
-        }
-      }
-    end
+deployment = lambda {
+  {
+    "apiVersion" => "apps/v1",
+    "kind" => "Deployment",
+    "metadata" => {"name" => "web"},
+    "spec" => {
+      "selector" => {"matchLabels" => {"app" => "web"}},
+      "template" => {"spec" => {"containers" => [{"name" => "web", "image" => "nginx"}]}}
+    }
+  }
+}
 
-    describe Kube::Schema::Lazy::Scanner do
-      it "slices every definition byte-identically to a full parse" do
-        PATHS.each do |path|
-          parsed = JSON.parse(File.read(path))
-          truth = parsed.fetch("definitions", parsed)
-          scanned = Kube::Schema::Lazy::Scanner.scan(path)
+describe "Kube::Schema::Lazy::Scanner" do
+  it "slices every definition byte-identically to a full parse" do
+    paths.each do |path|
+      parsed = JSON.parse(File.read(path))
+      truth = parsed.fetch("definitions", parsed)
+      scanned = Kube::Schema::Lazy::Scanner.scan(path)
 
-          expect(scanned.keys).to match_array(truth.keys)
+      scanned.keys.sort.should == truth.keys.sort
 
-          scanned.each do |key, (file, offset, length)|
-            expect(JSON.parse(File.binread(file, length, offset))).to eq(truth[key])
-          end
-        end
+      scanned.each do |key, (file, offset, length)|
+        JSON.parse(File.binread(file, length, offset)).should == truth[key]
       end
     end
+  end
+end
 
-    describe Kube::Schema::Lazy::Index do
-      it "indexes every definition across the version and extra files" do
-        expect(index.size).to be > 1_000
-        expect(index["io.k8s.api.apps.v1.Deployment"].gvks.first["kind"]).to eq("Deployment")
-        expect(index["io.k8s.api.apps.v1.Deployment"].properties).to include("spec", "metadata")
-      end
-    end
+describe "Kube::Schema::Lazy::Index" do
+  it "indexes every definition across the version and extra files" do
+    index.size.should.be > 1_000
+    index["io.k8s.api.apps.v1.Deployment"].gvks.first["kind"].should == "Deployment"
+    index["io.k8s.api.apps.v1.Deployment"].properties.should.include "spec"
+    index["io.k8s.api.apps.v1.Deployment"].properties.should.include "metadata"
+  end
+end
 
-    describe Kube::Schema::Lazy::Source do
-      subject(:source) { described_class.indexed(index, "io.k8s.api.apps.v1.Deployment") }
+describe "Kube::Schema::Lazy::Source" do
+  source = Kube::Schema::Lazy::Source.indexed(index, "io.k8s.api.apps.v1.Deployment")
 
-      it "exposes properties without compiling a schema" do
-        expect(source.value["properties"].keys).to include("spec")
-      end
+  it "exposes properties without compiling a schema" do
+    source.value["properties"].keys.should.include "spec"
+  end
 
-      it "validates through a compiled schema" do
-        expect(source.valid?(deployment)).to be true
-      end
+  it "validates through a compiled schema" do
+    source.valid?(deployment.()).should.be.true
+  end
 
-      it "reports errors that are only reachable through refs" do
-        deployment["spec"]["template"]["spec"]["containers"] = [{"image" => "nginx"}]
+  it "reports errors that are only reachable through refs" do
+    manifest = deployment.()
+    manifest["spec"]["template"]["spec"]["containers"] = [{"image" => "nginx"}]
 
-        expect(source.validate(deployment).to_a.size).to eq(1)
-      end
-    end
+    source.validate(manifest).to_a.size.should == 1
+  end
+end
 
-    describe ".load" do
-      it "raises MissingSchemaError when a spilled temp file has vanished" do
-        entry = Kube::Schema::Lazy::Spill.write("v1/Thing", {"properties" => {"spec" => {}}})
-        File.unlink(entry.path)
+describe "Kube::Schema::Lazy.load" do
+  it "raises MissingSchemaError when a spilled temp file has vanished" do
+    entry = Kube::Schema::Lazy::Spill.write("v1/Thing", {"properties" => {"spec" => {}}})
+    File.unlink(entry.path)
 
-        expect { Kube::Schema::Lazy.load(entry, "v1/Thing") }
-          .to raise_error(Kube::MissingSchemaError, /temp file/)
-      end
+    error = lambda { Kube::Schema::Lazy.load(entry, "v1/Thing") }.should.raise(Kube::MissingSchemaError)
+    error.message.should.match(/temp file/)
+  end
 
-      it "raises MissingSchemaError when a shipped schema file cannot be read" do
-        entry = Kube::Schema::Lazy::Entry.new("/nonexistent/schema.json", 0, 10, nil, [])
+  it "raises MissingSchemaError when a shipped schema file cannot be read" do
+    entry = Kube::Schema::Lazy::Entry.new("/nonexistent/schema.json", 0, 10, nil, [])
 
-        expect { Kube::Schema::Lazy.load(entry, "io.k8s.Thing") }
-          .to raise_error(Kube::MissingSchemaError, /could not be read/)
-      end
+    error = lambda { Kube::Schema::Lazy.load(entry, "io.k8s.Thing") }.should.raise(Kube::MissingSchemaError)
+    error.message.should.match(/could not be read/)
+  end
 
-      it "surfaces the error through Source#valid?" do
-        entry = Kube::Schema::Lazy::Spill.write("v1/Gone", {"properties" => {}})
-        source = Kube::Schema::Lazy::Source.spilled(index, entry)
-        File.unlink(entry.path)
+  it "surfaces the error through Source#valid?" do
+    entry = Kube::Schema::Lazy::Spill.write("v1/Gone", {"properties" => {}})
+    spilled = Kube::Schema::Lazy::Source.spilled(index, entry)
+    File.unlink(entry.path)
 
-        expect { source.valid?({}) }.to raise_error(Kube::MissingSchemaError)
-      end
-    end
+    lambda { spilled.valid?({}) }.should.raise(Kube::MissingSchemaError)
+  end
+end
 
-    describe ".patch" do
-      it "widens IntOrString to accept integers and strings" do
-        expect(Kube::Schema::Lazy.raw(index, Kube::Schema::Lazy::INT_OR_STRING)["type"]).to eq(["string", "integer"])
-      end
-    end
+describe "Kube::Schema::Lazy.patch" do
+  it "widens IntOrString to accept integers and strings" do
+    Kube::Schema::Lazy.raw(index, Kube::Schema::Lazy::INT_OR_STRING)["type"].should == ["string", "integer"]
+  end
+end
 
-    describe ".schema_for" do
-      it "compiles only the subschemas the instance touches" do
-        Kube::Schema::Lazy.schema_for(index, "io.k8s.api.apps.v1.Deployment").valid?(deployment)
+describe "Kube::Schema::Lazy.schema_for" do
+  it "compiles only the subschemas the instance touches" do
+    Kube::Schema::Lazy.schema_for(index, "io.k8s.api.apps.v1.Deployment").valid?(deployment.())
 
-        expect(ObjectSpace.each_object(JSONSchemer::Schema).count).to be < 2_000
-      end
-    end
+    ObjectSpace.each_object(JSONSchemer::Schema).count.should.be < 2_000
   end
 end

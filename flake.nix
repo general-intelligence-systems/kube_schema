@@ -13,23 +13,16 @@
         pkgs = nixpkgs.legacyPackages.${system};
         lib = mine.lib.${system};
 
-        # bundlerEnv evaluates the gemspec, because the Gemfile says `gemspec` and the
-        # lockfile carries kube_schema as a path gem, so the gemspec and the version file
-        # it require_relatives both have to reach the build directory. Nothing else is
-        # copied, so no second copy of the library lands on the load path.
-        gemspecFiles = pkgs.runCommand "kube_schema-gemspec" { } ''
-          mkdir -p $out/lib/kube/schema
-          cp ${./kube_schema.gemspec}        $out/kube_schema.gemspec
-          cp ${./lib/kube/schema/version.rb} $out/lib/kube/schema/version.rb
-        '';
-
+        # The Gemfile lists kube_schema's own dependencies instead of saying
+        # `gemspec`, so the lockfile carries no path gem and nothing here has to
+        # reach into the working tree. The library itself comes from RUBYLIB
+        # below, which is the only copy of it on the load path.
         gems = pkgs.bundlerEnv {
           name = "kube_schema-gems";
           ruby = pkgs.ruby_3_4;
           gemfile = ./Gemfile;
           lockfile = ./Gemfile.lock;
           gemset = ./gemset.nix;
-          extraConfigPaths = [ "${gemspecFiles}/." ];
         };
       in
       {
@@ -38,16 +31,23 @@
             gems
             gems.wrappedRuby
             pkgs.trufflehog
+            pkgs.ripgrep # scampi shells out to `rg` to discover __END__ spec sections
           ];
 
           shellHook = /* bash */ ''
             unset RUBYOPT
+            export BUNDLE_FORCE_RUBY_PLATFORM=false
             export BUNDLE_GEMFILE="$PWD/Gemfile"
+            export BUNDLE_FROZEN=false
 
-            # The gemspec's `git ls-files` finds nothing in the sandbox, so the path gem
-            # ships no files. Put the working tree's lib/ on the load path instead, which
-            # is what you want in a devshell anyway.
+            export LANG="''${LANG:-C.UTF-8}"
+            export LC_ALL="''${LC_ALL:-$LANG}"
+
             export RUBYLIB="$PWD/lib''${RUBYLIB:+:$RUBYLIB}"
+
+            if [ ! -f .git/hooks/pre-commit ]; then
+              bundle exec lefthook install
+            fi
           '';
         };
       }

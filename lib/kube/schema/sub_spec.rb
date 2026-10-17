@@ -151,335 +151,305 @@ module Kube
   end
 end
 
-if __FILE__ == $0
-  require "bundler/setup"
-  require "rspec/autorun"
-  require "kube/schema"
 
-  RSpec.describe Kube::Schema::SubSpec do
-    describe ".[]" do
-      it "returns a Class that subclasses SubSpec" do
-        klass = described_class["Container"]
-        expect(klass).to be_a(Class)
-        expect(klass).to be < described_class
-      end
+__END__
 
-      it "caches sub-spec classes by name" do
-        a = described_class["Container"]
-        b = described_class["Container"]
-        expect(a).to be(b)
-      end
+require "kube/schema"
 
-      it "resolves ContainerPort" do
-        klass = described_class["ContainerPort"]
-        expect(klass).to be < described_class
-      end
+sub_spec = Kube::Schema::SubSpec
+container = lambda { sub_spec["Container"] }
 
-      it "resolves Probe" do
-        klass = described_class["Probe"]
-        expect(klass).to be < described_class
-      end
-
-      it "resolves Volume" do
-        klass = described_class["Volume"]
-        expect(klass).to be < described_class
-      end
-
-      it "resolves EnvVar" do
-        klass = described_class["EnvVar"]
-        expect(klass).to be < described_class
-      end
-
-      it "resolves ResourceRequirements" do
-        klass = described_class["ResourceRequirements"]
-        expect(klass).to be < described_class
-      end
-
-      it "resolves a full definition key" do
-        klass = described_class["io.k8s.api.core.v1.Container"]
-        expect(klass).to be < described_class
-      end
-
-      it "raises for an unknown definition" do
-        expect { described_class["ThisDoesNotExist999"] }.to raise_error(RuntimeError, /No definition found/)
-      end
+describe "Kube::Schema::SubSpec" do
+  describe ".[]" do
+    it "returns a Class that subclasses SubSpec" do
+      klass = sub_spec["Container"]
+      klass.should.be.kind_of Class
+      klass.should.be < sub_spec
     end
 
-    describe ".definition_name" do
-      it "returns the short name used to look up the sub-spec" do
-        klass = described_class["Container"]
-        expect(klass.definition_name).to eq("Container")
-      end
+    it "caches sub-spec classes by name" do
+      sub_spec["Container"].should.be.identical_to sub_spec["Container"]
     end
 
-    describe ".schema" do
-      it "has a schema attached" do
-        klass = described_class["Container"]
-        expect(klass.schema).not_to be_nil
-      end
+    it "resolves ContainerPort" do
+      sub_spec["ContainerPort"].should.be < sub_spec
     end
 
-    describe ".schema_properties" do
-      it "lists known properties as symbols" do
-        klass = described_class["Container"]
-        props = klass.schema_properties
-        expect(props).to include(:name, :image, :ports, :env, :resources)
-      end
+    it "resolves Probe" do
+      sub_spec["Probe"].should.be < sub_spec
     end
 
-    describe "#initialize" do
-      let(:klass) { described_class["Container"] }
-
-      it "accepts a hash" do
-        sub = klass.new(name: "app", image: "nginx")
-        expect(sub.to_h).to include(name: "app", image: "nginx")
-      end
-
-      it "accepts string keys" do
-        sub = klass.new("name" => "app", "image" => "nginx")
-        expect(sub.to_h).to include(name: "app", image: "nginx")
-      end
-
-      it "creates an empty sub-spec when no arguments are given" do
-        sub = klass.new
-        expect(sub.to_h).to eq({})
-      end
-
-      it "accepts a block for DSL-style initialization" do
-        sub = klass.new {
-          self.name = "app"
-          self.image = "nginx:1.27"
-        }
-        expect(sub.to_h).to include(name: "app", image: "nginx:1.27")
-      end
-
-      it "supports nested DSL" do
-        sub = klass.new {
-          self.name = "app"
-          self.image = "nginx"
-          self.resources.requests = { cpu: "100m", memory: "128Mi" }
-          self.resources.limits = { cpu: "500m", memory: "256Mi" }
-        }
-        expect(sub.to_h[:resources][:requests]).to eq({ cpu: "100m", memory: "128Mi" })
-      end
-
-      it "ignores unknown properties" do
-        sub = klass.new(name: "app", bogus_field: "ignored")
-        expect(sub.to_h).to eq({ name: "app" })
-      end
+    it "resolves Volume" do
+      sub_spec["Volume"].should.be < sub_spec
     end
 
-    describe "accessor methods" do
-      let(:klass) { described_class["Container"] }
-
-      it "defines reader methods for schema properties" do
-        sub = klass.new(name: "app", image: "nginx")
-        expect(sub.name).to eq("app")
-        expect(sub.image).to eq("nginx")
-      end
-
-      it "returns nil for unset properties" do
-        sub = klass.new(name: "app")
-        expect(sub.image).to be_nil
-      end
+    it "resolves EnvVar" do
+      sub_spec["EnvVar"].should.be < sub_spec
     end
 
-    describe "#valid?" do
-      let(:klass) { described_class["Container"] }
-
-      it "returns true for valid data" do
-        sub = klass.new(name: "app", image: "nginx")
-        expect(sub.valid?).to be true
-      end
-
-      it "returns false for data violating the schema" do
-        sub = klass.new(name: "app", ports: "not_an_array")
-        expect(sub.valid?).to be false
-      end
-
-      it "returns false when required fields are missing" do
-        # Container requires 'name'
-        sub = klass.new(image: "nginx")
-        expect(sub.valid?).to be false
-      end
+    it "resolves ResourceRequirements" do
+      sub_spec["ResourceRequirements"].should.be < sub_spec
     end
 
-    describe "#valid!" do
-      let(:klass) { described_class["Container"] }
-
-      it "returns true for valid data" do
-        sub = klass.new(name: "app")
-        expect(sub.valid!).to be true
-      end
-
-      it "raises ValidationError for invalid data" do
-        sub = klass.new(image: "nginx")
-        expect { sub.valid! }.to raise_error(Kube::ValidationError)
-      end
-
-      it "includes the definition name in the error" do
-        sub = klass.new(image: "nginx")
-        expect { sub.valid! }.to raise_error(Kube::ValidationError, /Container/)
-      end
-
-      it "shows which required keys are missing" do
-        sub = klass.new(image: "nginx")
-        expect { sub.valid! }.to raise_error(Kube::ValidationError) do |error|
-          expect(error.message).to include("name is required but missing")
-        end
-      end
+    it "resolves a full definition key" do
+      sub_spec["io.k8s.api.core.v1.Container"].should.be < sub_spec
     end
 
-    describe "#to_h" do
-      let(:klass) { described_class["Container"] }
+    it "raises for an unknown definition" do
+      error = lambda { sub_spec["ThisDoesNotExist999"] }.should.raise(RuntimeError)
+      error.message.should.match(/No definition found/)
+    end
+  end
 
-      it "returns a plain Hash" do
-        sub = klass.new(name: "app", image: "nginx")
-        h = sub.to_h
-        expect(h).to be_a(Hash)
-        expect(h).to eq({ name: "app", image: "nginx" })
-      end
+  describe ".definition_name" do
+    it "returns the short name used to look up the sub-spec" do
+      container.().definition_name.should == "Container"
+    end
+  end
 
-      it "strips empty sub-hashes" do
-        sub = klass.new(name: "app")
-        expect(sub.to_h).to eq({ name: "app" })
-      end
+  describe ".schema" do
+    it "has a schema attached" do
+      container.().schema.should.not.be.nil
+    end
+  end
 
-      it "does NOT include apiVersion or kind" do
-        sub = klass.new(name: "app")
-        expect(sub.to_h).not_to have_key(:apiVersion)
-        expect(sub.to_h).not_to have_key(:kind)
-      end
+  describe ".schema_properties" do
+    it "lists known properties as symbols" do
+      props = container.().schema_properties
+      [:name, :image, :ports, :env, :resources].each { |prop| props.should.include prop }
+    end
+  end
 
-      it "preserves nested structure" do
-        sub = klass.new {
-          self.name = "app"
-          self.image = "nginx"
-          self.ports = [{ containerPort: 80 }]
-        }
-        expect(sub.to_h[:ports]).to eq([{ containerPort: 80 }])
-      end
+  describe "#initialize" do
+    it "accepts a hash" do
+      sub = container.().new(name: "app", image: "nginx")
+      sub.to_h[:name].should == "app"
+      sub.to_h[:image].should == "nginx"
     end
 
-    describe "#==" do
-      let(:klass) { described_class["Container"] }
-
-      it "considers two sub-specs equal when their data matches" do
-        a = klass.new(name: "app", image: "nginx")
-        b = klass.new(name: "app", image: "nginx")
-        expect(a).to eq(b)
-      end
-
-      it "considers two sub-specs unequal when their data differs" do
-        a = klass.new(name: "app", image: "nginx")
-        b = klass.new(name: "other", image: "nginx")
-        expect(a).not_to eq(b)
-      end
-
-      it "is not equal to a plain Hash" do
-        sub = klass.new(name: "app")
-        expect(sub).not_to eq({ name: "app" })
-      end
+    it "accepts string keys" do
+      sub = container.().new("name" => "app", "image" => "nginx")
+      sub.to_h[:name].should == "app"
+      sub.to_h[:image].should == "nginx"
     end
 
-    describe "auto-coercion in Resource" do
-      it "auto-coerces SubSpec instances inside Resource arrays" do
-        container = described_class["Container"].new {
-          self.name = "app"
-          self.image = "nginx:1.27"
-          self.ports = [{ containerPort: 80 }]
-        }
-
-        deploy = Kube::Schema["Deployment"].new {
-          metadata.name = "web"
-          spec.replicas = 1
-          spec.selector.matchLabels = { app: "web" }
-          spec.template.metadata.labels = { app: "web" }
-          spec.template.spec.containers = [container]
-        }
-
-        h = deploy.to_h
-        containers = h[:spec][:template][:spec][:containers]
-        expect(containers).to be_an(Array)
-        expect(containers.first).to be_a(Hash)
-        expect(containers.first[:name]).to eq("app")
-        expect(containers.first[:image]).to eq("nginx:1.27")
-      end
-
-      it "produces valid YAML with auto-coerced SubSpec" do
-        container = described_class["Container"].new {
-          self.name = "nginx"
-          self.image = "nginx:1.27"
-          self.ports = [{ containerPort: 80 }]
-        }
-
-        deploy = Kube::Schema["Deployment"].new {
-          metadata.name = "web"
-          spec.replicas = 1
-          spec.selector.matchLabels = { app: "web" }
-          spec.template.metadata.labels = { app: "web" }
-          spec.template.spec.containers = [container]
-        }
-
-        yaml = deploy.to_yaml
-        parsed = YAML.safe_load(yaml)
-        expect(parsed["spec"]["template"]["spec"]["containers"].first["name"]).to eq("nginx")
-      end
-
-      it "handles multiple SubSpec instances in an array" do
-        app = described_class["Container"].new(name: "app", image: "app:latest")
-        sidecar = described_class["Container"].new(name: "sidecar", image: "sidecar:latest")
-
-        deploy = Kube::Schema["Deployment"].new {
-          metadata.name = "web"
-          spec.replicas = 1
-          spec.selector.matchLabels = { app: "web" }
-          spec.template.metadata.labels = { app: "web" }
-          spec.template.spec.containers = [app, sidecar]
-        }
-
-        containers = deploy.to_h[:spec][:template][:spec][:containers]
-        expect(containers.size).to eq(2)
-        expect(containers.map { |c| c[:name] }).to eq(["app", "sidecar"])
-      end
-
-      it "works mixed with plain hashes" do
-        container = described_class["Container"].new(name: "typed", image: "typed:latest")
-
-        deploy = Kube::Schema["Deployment"].new {
-          metadata.name = "web"
-          spec.replicas = 1
-          spec.selector.matchLabels = { app: "web" }
-          spec.template.metadata.labels = { app: "web" }
-          spec.template.spec.containers = [
-            container,
-            { name: "plain", image: "plain:latest" }
-          ]
-        }
-
-        containers = deploy.to_h[:spec][:template][:spec][:containers]
-        expect(containers.map { |c| c[:name] }).to eq(["typed", "plain"])
-      end
+    it "creates an empty sub-spec when no arguments are given" do
+      container.().new.to_h.should == {}
     end
 
-    describe "disambiguation" do
-      it "prefers stable API versions over beta/alpha" do
-        # MatchCondition exists in v1, v1alpha1, and v1beta1
-        klass = described_class["MatchCondition"]
-        expect(klass).to be < described_class
-        expect(klass.schema).not_to be_nil
-      end
+    it "accepts a block for DSL-style initialization" do
+      sub = container.().new {
+        self.name = "app"
+        self.image = "nginx:1.27"
+      }
+      sub.to_h[:name].should == "app"
+      sub.to_h[:image].should == "nginx:1.27"
     end
 
-    describe "Instance#list_definitions" do
-      it "returns a sorted array of short definition names" do
-        instance = Kube::Schema::Instance.new("1.34")
-        defs = instance.list_definitions
-        expect(defs).to be_an(Array)
-        expect(defs).not_to be_empty
-        expect(defs).to include("Container", "ContainerPort", "Probe", "Volume")
-        expect(defs).to eq(defs.sort)
-      end
+    it "supports nested DSL" do
+      sub = container.().new {
+        self.name = "app"
+        self.image = "nginx"
+        self.resources.requests = { cpu: "100m", memory: "128Mi" }
+        self.resources.limits = { cpu: "500m", memory: "256Mi" }
+      }
+      sub.to_h[:resources][:requests].should == { cpu: "100m", memory: "128Mi" }
+    end
+
+    it "ignores unknown properties" do
+      container.().new(name: "app", bogus_field: "ignored").to_h.should == { name: "app" }
+    end
+  end
+
+  describe "accessor methods" do
+    it "defines reader methods for schema properties" do
+      sub = container.().new(name: "app", image: "nginx")
+      sub.name.should == "app"
+      sub.image.should == "nginx"
+    end
+
+    it "returns nil for unset properties" do
+      container.().new(name: "app").image.should.be.nil
+    end
+  end
+
+  describe "#valid?" do
+    it "returns true for valid data" do
+      container.().new(name: "app", image: "nginx").valid?.should.be.true
+    end
+
+    it "returns false for data violating the schema" do
+      container.().new(name: "app", ports: "not_an_array").valid?.should.be.false
+    end
+
+    it "returns false when required fields are missing" do
+      # Container requires 'name'
+      container.().new(image: "nginx").valid?.should.be.false
+    end
+  end
+
+  describe "#valid!" do
+    it "returns true for valid data" do
+      container.().new(name: "app").valid!.should.be.true
+    end
+
+    it "raises ValidationError for invalid data" do
+      sub = container.().new(image: "nginx")
+      lambda { sub.valid! }.should.raise(Kube::ValidationError)
+    end
+
+    it "includes the definition name in the error" do
+      sub = container.().new(image: "nginx")
+      error = lambda { sub.valid! }.should.raise(Kube::ValidationError)
+      error.message.should.match(/Container/)
+    end
+
+    it "shows which required keys are missing" do
+      sub = container.().new(image: "nginx")
+      error = lambda { sub.valid! }.should.raise(Kube::ValidationError)
+      error.message.should.include "name is required but missing"
+    end
+  end
+
+  describe "#to_h" do
+    it "returns a plain Hash" do
+      h = container.().new(name: "app", image: "nginx").to_h
+      h.should.be.kind_of Hash
+      h.should == { name: "app", image: "nginx" }
+    end
+
+    it "strips empty sub-hashes" do
+      container.().new(name: "app").to_h.should == { name: "app" }
+    end
+
+    it "does NOT include apiVersion or kind" do
+      h = container.().new(name: "app").to_h
+      h.should.not.include :apiVersion
+      h.should.not.include :kind
+    end
+
+    it "preserves nested structure" do
+      sub = container.().new {
+        self.name = "app"
+        self.image = "nginx"
+        self.ports = [{ containerPort: 80 }]
+      }
+      sub.to_h[:ports].should == [{ containerPort: 80 }]
+    end
+  end
+
+  describe "#==" do
+    it "considers two sub-specs equal when their data matches" do
+      a = container.().new(name: "app", image: "nginx")
+      b = container.().new(name: "app", image: "nginx")
+      a.should == b
+    end
+
+    it "considers two sub-specs unequal when their data differs" do
+      a = container.().new(name: "app", image: "nginx")
+      b = container.().new(name: "other", image: "nginx")
+      a.should.not == b
+    end
+
+    it "is not equal to a plain Hash" do
+      container.().new(name: "app").should.not == { name: "app" }
+    end
+  end
+
+  describe "auto-coercion in Resource" do
+    it "auto-coerces SubSpec instances inside Resource arrays" do
+      app = container.().new {
+        self.name = "app"
+        self.image = "nginx:1.27"
+        self.ports = [{ containerPort: 80 }]
+      }
+
+      deploy = Kube::Schema["Deployment"].new {
+        metadata.name = "web"
+        spec.replicas = 1
+        spec.selector.matchLabels = { app: "web" }
+        spec.template.metadata.labels = { app: "web" }
+        spec.template.spec.containers = [app]
+      }
+
+      containers = deploy.to_h[:spec][:template][:spec][:containers]
+      containers.should.be.kind_of Array
+      containers.first.should.be.kind_of Hash
+      containers.first[:name].should == "app"
+      containers.first[:image].should == "nginx:1.27"
+    end
+
+    it "produces valid YAML with auto-coerced SubSpec" do
+      nginx = container.().new {
+        self.name = "nginx"
+        self.image = "nginx:1.27"
+        self.ports = [{ containerPort: 80 }]
+      }
+
+      deploy = Kube::Schema["Deployment"].new {
+        metadata.name = "web"
+        spec.replicas = 1
+        spec.selector.matchLabels = { app: "web" }
+        spec.template.metadata.labels = { app: "web" }
+        spec.template.spec.containers = [nginx]
+      }
+
+      parsed = YAML.safe_load(deploy.to_yaml)
+      parsed["spec"]["template"]["spec"]["containers"].first["name"].should == "nginx"
+    end
+
+    it "handles multiple SubSpec instances in an array" do
+      app = container.().new(name: "app", image: "app:latest")
+      sidecar = container.().new(name: "sidecar", image: "sidecar:latest")
+
+      deploy = Kube::Schema["Deployment"].new {
+        metadata.name = "web"
+        spec.replicas = 1
+        spec.selector.matchLabels = { app: "web" }
+        spec.template.metadata.labels = { app: "web" }
+        spec.template.spec.containers = [app, sidecar]
+      }
+
+      containers = deploy.to_h[:spec][:template][:spec][:containers]
+      containers.size.should == 2
+      containers.map { |c| c[:name] }.should == ["app", "sidecar"]
+    end
+
+    it "works mixed with plain hashes" do
+      typed = container.().new(name: "typed", image: "typed:latest")
+
+      deploy = Kube::Schema["Deployment"].new {
+        metadata.name = "web"
+        spec.replicas = 1
+        spec.selector.matchLabels = { app: "web" }
+        spec.template.metadata.labels = { app: "web" }
+        spec.template.spec.containers = [
+          typed,
+          { name: "plain", image: "plain:latest" }
+        ]
+      }
+
+      containers = deploy.to_h[:spec][:template][:spec][:containers]
+      containers.map { |c| c[:name] }.should == ["typed", "plain"]
+    end
+  end
+
+  describe "disambiguation" do
+    it "prefers stable API versions over beta/alpha" do
+      # MatchCondition exists in v1, v1alpha1, and v1beta1
+      klass = sub_spec["MatchCondition"]
+      klass.should.be < sub_spec
+      klass.schema.should.not.be.nil
+    end
+  end
+
+  describe "Instance#list_definitions" do
+    it "returns a sorted array of short definition names" do
+      defs = Kube::Schema::Instance.new("1.34").list_definitions
+      defs.should.be.kind_of Array
+      defs.should.not.be.empty
+      ["Container", "ContainerPort", "Probe", "Volume"].each { |name| defs.should.include name }
+      defs.should == defs.sort
     end
   end
 end

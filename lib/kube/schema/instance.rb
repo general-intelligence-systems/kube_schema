@@ -350,267 +350,252 @@ module Kube
   end
 end
 
-if __FILE__ == $0
-  require "bundler/setup"
-  require "rspec/autorun"
-  require "kube/schema"
 
-  RSpec.describe Kube::Schema::Instance do
-    subject(:instance) { described_class.new("1.34") }
+__END__
 
-    describe "#initialize" do
-      it "stores the version" do
-        expect(instance.version).to eq("1.34")
-      end
+require "kube/schema"
 
-      it "raises UnknownVersionError for a non-version string" do
-        expect { described_class.new("not-a-version") }.to raise_error(Kube::UnknownVersionError)
-      end
+instance_class = Kube::Schema::Instance
+instance = instance_class.new("1.34")
+
+describe "Kube::Schema::Instance" do
+  describe "#initialize" do
+    it "stores the version" do
+      instance.version.should == "1.34"
     end
 
-    describe "#[]" do
-      it "returns a Class that subclasses Resource" do
-        klass = instance["Deployment"]
-        expect(klass).to be_a(Class)
-        expect(klass).to be < Kube::Schema::Resource
-      end
+    it "raises UnknownVersionError for a non-version string" do
+      lambda { instance_class.new("not-a-version") }.should.raise(Kube::UnknownVersionError)
+    end
+  end
 
-      it "caches resource classes by key" do
-        a = instance["Deployment"]
-        b = instance["Deployment"]
-        expect(a).to be(b)
-      end
-
-      it "raises for an unknown resource" do
-        expect { instance["ThisDoesNotExist999"] }.to raise_error(RuntimeError, /No resource schema found/)
-      end
-
-      it "returns different classes for different resources" do
-        deployment = instance["Deployment"]
-        service = instance["Service"]
-        expect(deployment).not_to eq(service)
-      end
-
-      it "attaches a schema to the resource class" do
-        klass = instance["Deployment"]
-        expect(klass.schema).not_to be_nil
-      end
-
-      it "is case-insensitive" do
-        a = instance["Deployment"]
-        b = instance["deployment"]
-        expect(a).to be < Kube::Schema::Resource
-        expect(b).to be < Kube::Schema::Resource
-      end
-
-      it "produces resources that can be instantiated with the block DSL" do
-        resource = instance["Deployment"].new {
-          metadata.name = "test"
-        }
-        expect(resource.to_h[:apiVersion]).to eq("apps/v1")
-        expect(resource.to_h[:kind]).to eq("Deployment")
-        expect(resource.to_h[:metadata][:name]).to eq("test")
-      end
-
-      it "attaches defaults (apiVersion and kind) to the resource class" do
-        klass = instance["Deployment"]
-        expect(klass.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
-      end
-
-      it "derives correct apiVersion for core resources (empty group)" do
-        klass = instance["Pod"]
-        expect(klass.defaults).to eq({ "apiVersion" => "v1", "kind" => "Pod" })
-      end
-
-      it "derives correct apiVersion for grouped resources" do
-        klass = instance["Ingress"]
-        expect(klass.defaults).to eq({ "apiVersion" => "networking.k8s.io/v1", "kind" => "Ingress" })
-      end
+  describe "#[]" do
+    it "returns a Class that subclasses Resource" do
+      klass = instance["Deployment"]
+      klass.should.be.kind_of Class
+      klass.should.be < Kube::Schema::Resource
     end
 
-    describe "#[] with full GVK string" do
-      it "resolves apps/v1/Deployment" do
-        klass = instance["apps/v1/Deployment"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "apps/v1", "kind" => "Deployment" })
-      end
-
-      it "resolves v1/Pod (core resource, empty group)" do
-        klass = instance["v1/Pod"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "v1", "kind" => "Pod" })
-      end
-
-      it "resolves networking.k8s.io/v1/Ingress" do
-        klass = instance["networking.k8s.io/v1/Ingress"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "networking.k8s.io/v1", "kind" => "Ingress" })
-      end
-
-      it "resolves kubevirt.io/v1/VirtualMachine" do
-        klass = instance["kubevirt.io/v1/VirtualMachine"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" })
-      end
-
-      it "raises for invalid GVK format (too many slashes)" do
-        expect { instance["a/b/c/d"] }.to raise_error(RuntimeError, /Invalid GVK format/)
-      end
-
-      it "raises for non-existent GVK" do
-        expect { instance["fake.io/v99/Blah"] }.to raise_error(RuntimeError, /No resource schema found/)
-      end
-
-      it "caches GVK lookups" do
-        a = instance["apps/v1/Deployment"]
-        b = instance["apps/v1/Deployment"]
-        expect(a).to be(b)
-      end
+    it "caches resource classes by key" do
+      instance["Deployment"].should.be.identical_to instance["Deployment"]
     end
 
-    describe "#list_resources" do
-      it "returns a sorted array of kind strings" do
-        kinds = instance.list_resources
-        expect(kinds).to be_an(Array)
-        expect(kinds).not_to be_empty
-        expect(kinds).to include("Deployment", "Service", "Namespace", "Pod")
-        expect(kinds).to eq(kinds.sort)
-      end
+    it "raises for an unknown resource" do
+      error = lambda { instance["ThisDoesNotExist999"] }.should.raise(RuntimeError)
+      error.message.should.match(/No resource schema found/)
     end
 
-    describe "#api_groups" do
-      it "returns a sorted array of group names including the core group" do
-        groups = instance.api_groups
-        expect(groups).to be_an(Array)
-        expect(groups).to eq(groups.sort)
-        expect(groups).to include("")
-      end
-
-      it "includes built-in groups, including ones without dots" do
-        expect(instance.api_groups).to include("apps", "batch", "rbac.authorization.k8s.io")
-      end
-
-      it "includes groups from the merged CRD definition bundles" do
-        expect(instance.api_groups).to include("kubevirt.io", "argoproj.io")
-      end
-
-      it "includes groups from registered custom schemas" do
-        Kube::Schema.register("TenantVmClaim",
-          schema: { "type" => "object" },
-          api_version: "tradeportal.ai/v1")
-        expect(instance.api_groups).to include("tradeportal.ai")
-      ensure
-        Kube::Schema.reset_custom_schemas!
-      end
+    it "returns different classes for different resources" do
+      instance["Deployment"].should.not == instance["Service"]
     end
 
-    describe "KubeVirt schemas" do
-      it "resolves VirtualMachine" do
-        klass = instance["VirtualMachine"]
-        expect(klass).to be_a(Class)
-        expect(klass).to be < Kube::Schema::Resource
-      end
-
-      it "has correct defaults for VirtualMachine" do
-        klass = instance["VirtualMachine"]
-        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" })
-      end
-
-      it "includes VirtualMachine in list_resources" do
-        expect(instance.list_resources).to include("VirtualMachine")
-      end
-
-      it "resolves VirtualMachineInstance" do
-        klass = instance["VirtualMachineInstance"]
-        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachineInstance" })
-      end
-
-      it "resolves KubeVirt" do
-        klass = instance["KubeVirt"]
-        expect(klass.defaults).to eq({ "apiVersion" => "kubevirt.io/v1", "kind" => "KubeVirt" })
-      end
-
-      it "can instantiate a VirtualMachine with the block DSL" do
-        resource = instance["VirtualMachine"].new {
-          metadata.name = "test-vm"
-        }
-        expect(resource.to_h[:apiVersion]).to eq("kubevirt.io/v1")
-        expect(resource.to_h[:kind]).to eq("VirtualMachine")
-        expect(resource.to_h[:metadata][:name]).to eq("test-vm")
-      end
-
-      it "validates a VirtualMachine without $ref resolution errors" do
-        resource = instance["VirtualMachine"].new {
-          metadata.name = "test-vm"
-          spec.runStrategy = "Always"
-          spec.template.metadata.labels = { "kubevirt.io/vm": "test-vm" }
-          spec.template.spec.domain.cpu = { cores: 1 }
-          spec.template.spec.domain.devices = {}
-          spec.template.spec.domain.memory = { guest: "1Gi" }
-          spec.template.spec.domain.resources = { requests: { memory: "1Gi" } }
-          spec.template.spec.volumes = [
-            { name: "rootdisk", containerDisk: { image: "registry.example.com/vm:latest" } }
-          ]
-        }
-        expect { resource.to_yaml }.not_to raise_error
-      end
+    it "attaches a schema to the resource class" do
+      instance["Deployment"].schema.should.not.be.nil
     end
 
-    describe "CloudnativePG schemas" do
-      it "resolves Cluster by kind" do
-        klass = instance["Cluster"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" })
-      end
-
-      it "resolves Cluster by full GVK string" do
-        klass = instance["postgresql.cnpg.io/v1/Cluster"]
-        expect(klass).to be < Kube::Schema::Resource
-        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" })
-      end
-
-      it "includes Cluster in list_resources" do
-        expect(instance.list_resources).to include("Cluster")
-      end
-
-      it "resolves Backup" do
-        klass = instance["postgresql.cnpg.io/v1/Backup"]
-        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Backup" })
-      end
-
-      it "resolves ScheduledBackup" do
-        klass = instance["postgresql.cnpg.io/v1/ScheduledBackup"]
-        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "ScheduledBackup" })
-      end
-
-      it "resolves Pooler" do
-        klass = instance["postgresql.cnpg.io/v1/Pooler"]
-        expect(klass.defaults).to eq({ "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Pooler" })
-      end
-
-      it "can instantiate a Cluster with the block DSL" do
-        resource = instance["postgresql.cnpg.io/v1/Cluster"].new {
-          metadata.name = "pg-cluster"
-          metadata.namespace = "databases"
-          spec.instances = 3
-          spec.storage.size = "10Gi"
-        }
-        expect(resource.to_h[:apiVersion]).to eq("postgresql.cnpg.io/v1")
-        expect(resource.to_h[:kind]).to eq("Cluster")
-        expect(resource.to_h[:metadata][:name]).to eq("pg-cluster")
-        expect(resource.to_h[:spec][:instances]).to eq(3)
-      end
+    it "is case-insensitive" do
+      instance["Deployment"].should.be < Kube::Schema::Resource
+      instance["deployment"].should.be < Kube::Schema::Resource
     end
 
-    describe "class-level catalog cache" do
-      it "shares the catalog across instances of the same version" do
-        a = described_class.new("1.34")
-        b = described_class.new("1.34")
+    it "produces resources that can be instantiated with the block DSL" do
+      resource = instance["Deployment"].new {
+        metadata.name = "test"
+      }
+      resource.to_h[:apiVersion].should == "apps/v1"
+      resource.to_h[:kind].should == "Deployment"
+      resource.to_h[:metadata][:name].should == "test"
+    end
 
-        expect(a["Deployment"]).to be < Kube::Schema::Resource
-        expect(b["Deployment"]).to be < Kube::Schema::Resource
-        expect(described_class.catalogs["1.34"]).to be_a(Kube::Schema::Lazy::Index)
-      end
+    it "attaches defaults (apiVersion and kind) to the resource class" do
+      instance["Deployment"].defaults.should == { "apiVersion" => "apps/v1", "kind" => "Deployment" }
+    end
+
+    it "derives correct apiVersion for core resources (empty group)" do
+      instance["Pod"].defaults.should == { "apiVersion" => "v1", "kind" => "Pod" }
+    end
+
+    it "derives correct apiVersion for grouped resources" do
+      instance["Ingress"].defaults.should == { "apiVersion" => "networking.k8s.io/v1", "kind" => "Ingress" }
+    end
+  end
+
+  describe "#[] with full GVK string" do
+    it "resolves apps/v1/Deployment" do
+      klass = instance["apps/v1/Deployment"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "apps/v1", "kind" => "Deployment" }
+    end
+
+    it "resolves v1/Pod (core resource, empty group)" do
+      klass = instance["v1/Pod"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "v1", "kind" => "Pod" }
+    end
+
+    it "resolves networking.k8s.io/v1/Ingress" do
+      klass = instance["networking.k8s.io/v1/Ingress"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "networking.k8s.io/v1", "kind" => "Ingress" }
+    end
+
+    it "resolves kubevirt.io/v1/VirtualMachine" do
+      klass = instance["kubevirt.io/v1/VirtualMachine"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" }
+    end
+
+    it "raises for invalid GVK format (too many slashes)" do
+      error = lambda { instance["a/b/c/d"] }.should.raise(RuntimeError)
+      error.message.should.match(/Invalid GVK format/)
+    end
+
+    it "raises for non-existent GVK" do
+      error = lambda { instance["fake.io/v99/Blah"] }.should.raise(RuntimeError)
+      error.message.should.match(/No resource schema found/)
+    end
+
+    it "caches GVK lookups" do
+      instance["apps/v1/Deployment"].should.be.identical_to instance["apps/v1/Deployment"]
+    end
+  end
+
+  describe "#list_resources" do
+    it "returns a sorted array of kind strings" do
+      kinds = instance.list_resources
+      kinds.should.be.kind_of Array
+      kinds.should.not.be.empty
+      ["Deployment", "Service", "Namespace", "Pod"].each { |kind| kinds.should.include kind }
+      kinds.should == kinds.sort
+    end
+  end
+
+  describe "#api_groups" do
+    it "returns a sorted array of group names including the core group" do
+      groups = instance.api_groups
+      groups.should.be.kind_of Array
+      groups.should == groups.sort
+      groups.should.include ""
+    end
+
+    it "includes built-in groups, including ones without dots" do
+      ["apps", "batch", "rbac.authorization.k8s.io"].each { |group| instance.api_groups.should.include group }
+    end
+
+    it "includes groups from the merged CRD definition bundles" do
+      ["kubevirt.io", "argoproj.io"].each { |group| instance.api_groups.should.include group }
+    end
+
+    it "includes groups from registered custom schemas" do
+      Kube::Schema.register("TenantVmClaim",
+        schema: { "type" => "object" },
+        api_version: "tradeportal.ai/v1")
+      instance.api_groups.should.include "tradeportal.ai"
+    ensure
+      Kube::Schema.reset_custom_schemas!
+    end
+  end
+
+  describe "KubeVirt schemas" do
+    it "resolves VirtualMachine" do
+      klass = instance["VirtualMachine"]
+      klass.should.be.kind_of Class
+      klass.should.be < Kube::Schema::Resource
+    end
+
+    it "has correct defaults for VirtualMachine" do
+      instance["VirtualMachine"].defaults.should == { "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachine" }
+    end
+
+    it "includes VirtualMachine in list_resources" do
+      instance.list_resources.should.include "VirtualMachine"
+    end
+
+    it "resolves VirtualMachineInstance" do
+      instance["VirtualMachineInstance"].defaults.should == { "apiVersion" => "kubevirt.io/v1", "kind" => "VirtualMachineInstance" }
+    end
+
+    it "resolves KubeVirt" do
+      instance["KubeVirt"].defaults.should == { "apiVersion" => "kubevirt.io/v1", "kind" => "KubeVirt" }
+    end
+
+    it "can instantiate a VirtualMachine with the block DSL" do
+      resource = instance["VirtualMachine"].new {
+        metadata.name = "test-vm"
+      }
+      resource.to_h[:apiVersion].should == "kubevirt.io/v1"
+      resource.to_h[:kind].should == "VirtualMachine"
+      resource.to_h[:metadata][:name].should == "test-vm"
+    end
+
+    it "validates a VirtualMachine without $ref resolution errors" do
+      resource = instance["VirtualMachine"].new {
+        metadata.name = "test-vm"
+        spec.runStrategy = "Always"
+        spec.template.metadata.labels = { "kubevirt.io/vm": "test-vm" }
+        spec.template.spec.domain.cpu = { cores: 1 }
+        spec.template.spec.domain.devices = {}
+        spec.template.spec.domain.memory = { guest: "1Gi" }
+        spec.template.spec.domain.resources = { requests: { memory: "1Gi" } }
+        spec.template.spec.volumes = [
+          { name: "rootdisk", containerDisk: { image: "registry.example.com/vm:latest" } }
+        ]
+      }
+      lambda { resource.to_yaml }.should.not.raise(StandardError)
+    end
+  end
+
+  describe "CloudnativePG schemas" do
+    it "resolves Cluster by kind" do
+      klass = instance["Cluster"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" }
+    end
+
+    it "resolves Cluster by full GVK string" do
+      klass = instance["postgresql.cnpg.io/v1/Cluster"]
+      klass.should.be < Kube::Schema::Resource
+      klass.defaults.should == { "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Cluster" }
+    end
+
+    it "includes Cluster in list_resources" do
+      instance.list_resources.should.include "Cluster"
+    end
+
+    it "resolves Backup" do
+      instance["postgresql.cnpg.io/v1/Backup"].defaults.should == { "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Backup" }
+    end
+
+    it "resolves ScheduledBackup" do
+      instance["postgresql.cnpg.io/v1/ScheduledBackup"].defaults.should == { "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "ScheduledBackup" }
+    end
+
+    it "resolves Pooler" do
+      instance["postgresql.cnpg.io/v1/Pooler"].defaults.should == { "apiVersion" => "postgresql.cnpg.io/v1", "kind" => "Pooler" }
+    end
+
+    it "can instantiate a Cluster with the block DSL" do
+      resource = instance["postgresql.cnpg.io/v1/Cluster"].new {
+        metadata.name = "pg-cluster"
+        metadata.namespace = "databases"
+        spec.instances = 3
+        spec.storage.size = "10Gi"
+      }
+      resource.to_h[:apiVersion].should == "postgresql.cnpg.io/v1"
+      resource.to_h[:kind].should == "Cluster"
+      resource.to_h[:metadata][:name].should == "pg-cluster"
+      resource.to_h[:spec][:instances].should == 3
+    end
+  end
+
+  describe "class-level catalog cache" do
+    it "shares the catalog across instances of the same version" do
+      a = instance_class.new("1.34")
+      b = instance_class.new("1.34")
+
+      a["Deployment"].should.be < Kube::Schema::Resource
+      b["Deployment"].should.be < Kube::Schema::Resource
+      instance_class.catalogs["1.34"].should.be.kind_of Kube::Schema::Lazy::Index
     end
   end
 end

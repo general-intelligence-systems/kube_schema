@@ -51,6 +51,15 @@ This file starts at 1.10.0; for earlier releases see the git history.
   scanning the JSON for definition boundaries, so the schema documents are
   never parsed whole and nothing but offsets and small metadata is retained.
 
+- **Tests run on [scampi](https://github.com/general-intelligence-systems/scampi)
+  instead of RSpec.** The co-located specs moved out of
+  `if __FILE__ == $0` blocks and into each file's `__END__` section, so they no
+  longer load in production — Ruby stops parsing at `__END__`. `bin/test` is now
+  `bundle exec scampi`, which discovers every `.rb` carrying an `__END__` spec
+  section and emits TAP version 14. The assertions are scampi's `should` chain
+  rather than `expect`, and the devshell gained `ripgrep`, which scampi shells
+  out to for discovery.
+
 ### Added
 
 - `Kube::Schema::Lazy` — `Scanner` (byte-offset index over the schema files),
